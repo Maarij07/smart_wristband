@@ -1,77 +1,25 @@
 {
-  "shadcn": {
-    "background": "#020817",
-    "foreground": "#f1f5f9",
-    "card": "#1e293b",
-    "cardForeground": "#f1f5f9",
-    "popover": "#1e293b",
-    "popoverForeground": "#f1f5f9",
-    "primary": "#3b82f6",
-    "primaryForeground": "#f8fafc",
-    "secondary": "#1e293b",
-    "secondaryForeground": "#e2e8f0",
-    "muted": "#cbd5e1",
-    "mutedForeground": "#94a3b8",
-    "accent": "#334155",
-    "accentForeground": "#e2e8f0",
-    "destructive": "#ef4444",
-    "destructiveForeground": "#f8fafc",
-    "border": "#334155",
-    "input": "#0f172a",
-    "ring": "#3b82f6",
-    "chart1": "#3b82f6",
-    "chart2": "#8b5cf6",
-    "chart3": "#ec4899",
-    "chart4": "#f59e0b",
-    "chart5": "#10b981"
+  "minimal": {
+    "black": "#000000",
+    "white": "#FFFFFF",
+    "nearBlack": "#111111",
+    "nearWhite": "#FAFAFA",
+    "mediumGray": "#888888",
+    "lightGray": "#CCCCCC",
+    "veryLightGray": "#EEEEEE",
+    "accent": "#000000",
+    "textPrimary": "#000000",
+    "textSecondary": "#888888",
+    "textDisabled": "#CCCCCC",
+    "divider": "#EEEEEE",
+    "surface": "#FFFFFF",
+    "surfaceVariant": "#FAFAFA"
   },
-  "legacy": {
-    "primary": {
-      "black": "#000000",
-      "darkGrey": "#121212",
-      "smokeBlack": "#1a1a1a"
-    },
-    "secondary": {
-      "smokeyGrey": "#2d2d2d",
-      "lightSmokeyGrey": "#404040",
-      "mediumGrey": "#666666",
-      "ashGrey": "#808080"
-    },
-    "accent": {
-      "charcoal": "#2f2f2f",
-      "slate": "#3c3c3c",
-      "graphite": "#4a4a4a",
-      "stone": "#555555"
-    },
-    "background": {
-      "mainBackground": "#000000",
-      "cardBackground": "#121212",
-      "surface": "#1a1a1a"
-    },
-    "text": {
-      "primaryText": "#ffffff",
-      "secondaryText": "#b3b3b3",
-      "disabledText": "#666666"
-    },
-    "border": {
-      "borderColor": "#333333",
-      "divider": "#262626"
-    },
-    "success": {
-      "successMain": "#4caf50",
-      "successLight": "#66bb6a"
-    },
-    "warning": {
-      "warningMain": "#ff9800",
-      "warningLight": "#ffa726"
-    },
-    "error": {
-      "errorMain": "#f44336",
-      "errorLight": "#ef5350"
-    },
-    "info": {
-      "infoMain": "#2196f3",
-      "infoLight": "#42a5f5"
-    }
+  "usage_notes": {
+    "philosophy": "Strict black/white minimalism with maximum 10% accent usage",
+    "primary_usage": "Black for text, accents, and primary actions",
+    "secondary_usage": "White for backgrounds and surfaces",
+    "supporting_usage": "Grays for secondary content and disabled states",
+    "consistency": "All colors must be accessed through AppColors utility class"
   }
 }

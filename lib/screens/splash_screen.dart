@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../utils/colors.dart';
 import 'signin_screen.dart';
 
@@ -20,7 +19,7 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
 
@@ -29,7 +28,7 @@ class _SplashScreenState extends State<SplashScreen>
       end: 1.0,
     ).animate(CurvedAnimation(
       parent: _controller,
-      curve: Curves.easeInOut,
+      curve: Curves.easeOutCubic,
     ));
 
     _slideAnimation = Tween<Offset>(
@@ -40,6 +39,7 @@ class _SplashScreenState extends State<SplashScreen>
       curve: Curves.easeOutCubic,
     ));
 
+    _controller.forward();
     _startAnimation();
   }
 
@@ -63,102 +63,99 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Center(
-        child: FadeTransition(
-          opacity: _opacityAnimation,
-          child: SlideTransition(
-            position: _slideAnimation,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Logo container with shadcn card styling
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: AppColors.border,
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF000000).withOpacity(0.2),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
+      backgroundColor: AppColors.surface,
+      body: SafeArea(
+        child: Center(
+          child: FadeTransition(
+            opacity: _opacityAnimation,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Logo
+                    Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: AppColors.divider,
+                          width: 1,
+                        ),
                       ),
-                    ],
-                  ),
-                  child: Icon(
-                    Icons.watch,
-                    size: 60,
-                    color: AppColors.secondaryForeground,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                
-                // App name with shadcn typography
-                Text(
-                  'Smart WristBand',
-                  style: GoogleFonts.inter(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.foreground,
-                    letterSpacing: -0.8,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                
-                // Subtitle
-                Text(
-                  'Wearable Technology Platform',
-                  style: GoogleFonts.inter(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w400,
-                    color: AppColors.mutedForeground,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                
-                // Tagline
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: Text(
-                    'Connect Beyond Distance - Where Solitude Meets Community Through Wearable Technology',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
-                      color: AppColors.muted,
-                      height: 1.5,
+                      child: Icon(
+                        Icons.watch,
+                        size: 60,
+                        color: AppColors.black,
+                      ),
                     ),
-                  ),
-                ),
-                
-                const SizedBox(height: 48),
-                
-                // Loading indicator with shadcn styling
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppColors.border,
-                      width: 1,
+                    const SizedBox(height: 40),
+                    
+                    // App name
+                    Text(
+                      'Smart WristBand',
+                      style: TextStyle(
+                        fontSize: 36,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.8,
+                        height: 1.1,
+                      ),
                     ),
-                  ),
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      AppColors.primary,
+                    const SizedBox(height: 16),
+                    
+                    // Subtitle
+                    Text(
+                      'Wearable Technology Platform',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.textSecondary,
+                        height: 1.4,
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 32),
+                    
+                    // Tagline
+                    Text(
+                      'Connect Beyond Distance - Where Solitude Meets Community Through Wearable Technology',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.textSecondary,
+                        height: 1.5,
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 64),
+                    
+                    // Loading indicator
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: AppColors.divider,
+                          width: 1,
+                        ),
+                      ),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppColors.black,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),

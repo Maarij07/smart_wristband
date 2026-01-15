@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'screens/splash_screen.dart';
-import 'utils/colors.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,17 +14,20 @@ class MyApp extends StatelessWidget {
       title: 'Smart Wristband',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: const ColorScheme.dark(
-          primary: AppColors.primary,
-          secondary: AppColors.secondary,
-          surface: AppColors.input,
-          background: AppColors.background,
-          onPrimary: AppColors.foreground,
-          onSecondary: AppColors.secondaryForeground,
-          onSurface: AppColors.muted,
-          brightness: Brightness.dark,
+        useMaterial3: true,
+        fontFamily: 'SF Pro Text',
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFF000000),
+          onPrimary: Color(0xFFFFFFFF),
+          secondary: Color(0xFFEEEEEE),
+          onSecondary: Color(0xFF000000),
+          surface: Color(0xFFFFFFFF),
+          onSurface: Color(0xFF000000),
+          background: Color(0xFFFFFFFF),
+          onBackground: Color(0xFF000000),
+          error: Color(0xFF000000),
+          onError: Color(0xFFFFFFFF),
         ),
-        fontFamily: 'Inter',
       ),
       home: const SplashScreen(),
     );
