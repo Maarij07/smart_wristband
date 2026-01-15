@@ -1,41 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:ionicons/ionicons.dart';
 import '../utils/colors.dart';
-import 'forgot_password_screen.dart';
-import 'signup_screen.dart';
+import 'signin_screen.dart';
 
-class SignInScreen extends StatefulWidget {
-  const SignInScreen({super.key});
+class SignUpScreen extends StatefulWidget {
+  const SignUpScreen({super.key});
 
   @override
-  State<SignInScreen> createState() => _SignInScreenState();
+  State<SignUpScreen> createState() => _SignUpScreenState();
 }
 
-class _SignInScreenState extends State<SignInScreen> with TickerProviderStateMixin {
+class _SignUpScreenState extends State<SignUpScreen>
+    with TickerProviderStateMixin {
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
 
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+  
   bool _obscurePassword = true;
-  bool _rememberMe = false;
+  bool _obscureConfirmPassword = true;
+  bool _termsAccepted = false;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _fadeController = AnimationController(duration: const Duration(milliseconds: 800), vsync: this);
-    _slideController = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
+    _fadeController =
+        AnimationController(duration: const Duration(milliseconds: 800), vsync: this);
+    _slideController =
+        AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut));
+        CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut));
 
-    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero).animate(
-      CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
+    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
 
     _startEntranceAnimation();
   }
@@ -49,17 +53,64 @@ class _SignInScreenState extends State<SignInScreen> with TickerProviderStateMix
   void dispose() {
     _fadeController.dispose();
     _slideController.dispose();
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  void _handleSignIn() async {
-    setState(() { _isLoading = true; });
+  void _handleSignUp() async {
+    if (!_termsAccepted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please accept the terms and conditions',
+            style: GoogleFonts.inter(color: AppColors.destructiveForeground),
+          ),
+          backgroundColor: AppColors.destructive,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Simulate sign up process
     await Future.delayed(const Duration(seconds: 2));
+
     if (mounted) {
-      setState(() { _isLoading = false; });
-      Navigator.pop(context);
+      setState(() {
+        _isLoading = false;
+      });
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Account created successfully!',
+            style: GoogleFonts.inter(color: AppColors.primaryForeground),
+          ),
+          backgroundColor: AppColors.primary,
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
+
+      // Navigate to sign in
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const SignInScreen()),
+          );
+        }
+      });
     }
   }
 
@@ -67,6 +118,26 @@ class _SignInScreenState extends State<SignInScreen> with TickerProviderStateMix
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back,
+            color: AppColors.foreground,
+            size: 24,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Create Account',
+          style: GoogleFonts.inter(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: AppColors.foreground,
+          ),
+        ),
+      ),
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
@@ -84,7 +155,7 @@ class _SignInScreenState extends State<SignInScreen> with TickerProviderStateMix
                     children: [
                       // Header
                       Text(
-                        'Welcome back',
+                        'Get Started',
                         style: GoogleFonts.inter(
                           fontSize: 24,
                           fontWeight: FontWeight.w800,
@@ -93,7 +164,7 @@ class _SignInScreenState extends State<SignInScreen> with TickerProviderStateMix
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Sign in to your account',
+                        'Create your account to join our community',
                         style: GoogleFonts.inter(
                           fontSize: 16,
                           fontWeight: FontWeight.w400,
@@ -101,27 +172,36 @@ class _SignInScreenState extends State<SignInScreen> with TickerProviderStateMix
                         ),
                       ),
                       const SizedBox(height: 32),
-                      
+
+                      // Name Field
+                      _buildTextField(
+                        controller: _nameController,
+                        label: 'Full Name',
+                        hint: 'Enter your full name',
+                        icon: Icons.person_outline,
+                      ),
+                      const SizedBox(height: 20),
+
                       // Email Field
-                      _buildShadcnTextField(
+                      _buildTextField(
                         controller: _emailController,
-                        label: 'Email',
-                        hint: 'm@example.com',
-                        icon: Ionicons.mail_outline,
+                        label: 'Email Address',
+                        hint: 'Enter your email',
+                        icon: Icons.mail_outline,
                         keyboardType: TextInputType.emailAddress,
                       ),
                       const SizedBox(height: 20),
-                      
+
                       // Password Field
-                      _buildShadcnTextField(
+                      _buildTextField(
                         controller: _passwordController,
                         label: 'Password',
-                        hint: '••••••••',
-                        icon: Ionicons.lock_closed_outline,
+                        hint: 'Create a strong password',
+                        icon: Icons.lock_outline,
                         obscureText: _obscurePassword,
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscurePassword ? Ionicons.eye_outline : Ionicons.eye_off_outline,
+                            _obscurePassword ? Icons.visibility : Icons.visibility_off,
                             color: AppColors.mutedForeground,
                             size: 20,
                           ),
@@ -133,32 +213,54 @@ class _SignInScreenState extends State<SignInScreen> with TickerProviderStateMix
                         ),
                       ),
                       const SizedBox(height: 20),
-                      
-                      // Remember me checkbox
+
+                      // Confirm Password Field
+                      _buildTextField(
+                        controller: _confirmPasswordController,
+                        label: 'Confirm Password',
+                        hint: 'Re-enter your password',
+                        icon: Icons.lock_outline,
+                        obscureText: _obscureConfirmPassword,
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                            color: AppColors.mutedForeground,
+                            size: 20,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscureConfirmPassword = !_obscureConfirmPassword;
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Terms and Conditions
                       Row(
                         children: [
                           GestureDetector(
                             onTap: () {
                               setState(() {
-                                _rememberMe = !_rememberMe;
+                                _termsAccepted = !_termsAccepted;
                               });
                             },
                             child: Container(
                               width: 20,
                               height: 20,
                               decoration: BoxDecoration(
-                                color: _rememberMe 
-                                    ? AppColors.primary
+                                color: _termsAccepted 
+                                    ? AppColors.primary 
                                     : AppColors.card,
                                 borderRadius: BorderRadius.circular(4),
                                 border: Border.all(
-                                  color: _rememberMe 
+                                  color: _termsAccepted 
                                       ? AppColors.primary
                                       : AppColors.border,
                                   width: 1.5,
                                 ),
                               ),
-                              child: _rememberMe
+                              child: _termsAccepted
                                   ? Icon(
                                       Icons.check,
                                       size: 16,
@@ -168,24 +270,58 @@ class _SignInScreenState extends State<SignInScreen> with TickerProviderStateMix
                             ),
                           ),
                           const SizedBox(width: 12),
-                          Text(
-                            'Remember me',
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w400,
-                              color: AppColors.muted,
+                          Expanded(
+                            child: Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: 'I agree to the ',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w400,
+                                      color: AppColors.muted,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: 'Terms of Service ',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.primary,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: 'and ',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w400,
+                                      color: AppColors.muted,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: 'Privacy Policy',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.primary,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 24),
-                      
-                      // Sign In Button
+
+                      // Sign Up Button
                       SizedBox(
                         width: double.infinity,
                         height: 44,
                         child: ElevatedButton(
-                          onPressed: _isLoading ? null : _handleSignIn,
+                          onPressed: _isLoading ? null : _handleSignUp,
                           style: AppColors.primaryButtonStyle(),
                           child: _isLoading
                               ? SizedBox(
@@ -193,11 +329,12 @@ class _SignInScreenState extends State<SignInScreen> with TickerProviderStateMix
                                   height: 20,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        AppColors.primaryForeground),
                                   ),
                                 )
                               : Text(
-                                  'Sign in',
+                                  'Create Account',
                                   style: GoogleFonts.inter(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
@@ -206,30 +343,7 @@ class _SignInScreenState extends State<SignInScreen> with TickerProviderStateMix
                         ),
                       ),
                       const SizedBox(height: 24),
-                      
-                      // Forgot password
-                      Center(
-                        child: TextButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const ForgotPasswordScreen(),
-                              ),
-                            );
-                          },
-                          child: Text(
-                            'Forgot your password?',
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      
+
                       // Divider
                       Row(
                         children: [
@@ -259,8 +373,8 @@ class _SignInScreenState extends State<SignInScreen> with TickerProviderStateMix
                         ],
                       ),
                       const SizedBox(height: 24),
-                      
-                      // Google Sign In
+
+                      // Google Sign Up
                       SizedBox(
                         width: double.infinity,
                         height: 44,
@@ -268,7 +382,7 @@ class _SignInScreenState extends State<SignInScreen> with TickerProviderStateMix
                           onPressed: () {},
                           style: AppColors.outlineButtonStyle(),
                           icon: Icon(
-                            FontAwesomeIcons.google,
+                            Icons.g_mobiledata,
                             color: AppColors.foreground,
                             size: 18,
                           ),
@@ -283,23 +397,21 @@ class _SignInScreenState extends State<SignInScreen> with TickerProviderStateMix
                         ),
                       ),
                       const SizedBox(height: 24),
-                      
-                      // Sign up link
+
+                      // Sign in link
                       Center(
                         child: TextButton(
                           onPressed: () {
-                            Navigator.push(
+                            Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(
-                                builder: (context) => const SignUpScreen(),
-                              ),
+                              MaterialPageRoute(builder: (context) => const SignInScreen()),
                             );
                           },
                           child: Text.rich(
                             TextSpan(
                               children: [
                                 TextSpan(
-                                  text: "Don't have an account? ",
+                                  text: 'Already have an account? ',
                                   style: GoogleFonts.inter(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w400,
@@ -307,7 +419,7 @@ class _SignInScreenState extends State<SignInScreen> with TickerProviderStateMix
                                   ),
                                 ),
                                 TextSpan(
-                                  text: 'Sign up',
+                                  text: 'Sign in',
                                   style: GoogleFonts.inter(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
@@ -330,7 +442,7 @@ class _SignInScreenState extends State<SignInScreen> with TickerProviderStateMix
     );
   }
 
-  Widget _buildShadcnTextField({
+  Widget _buildTextField({
     required TextEditingController controller,
     required String label,
     required String hint,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../utils/colors.dart';
 import 'signin_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -62,7 +63,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF000000), // Pure black background
+      backgroundColor: AppColors.background,
       body: Center(
         child: FadeTransition(
           opacity: _opacityAnimation,
@@ -71,82 +72,89 @@ class _SplashScreenState extends State<SplashScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo placeholder - you can replace with actual logo
+                // Logo container with shadcn card styling
                 Container(
                   width: 120,
                   height: 120,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2d2d2d), // Smokey grey
+                    color: AppColors.card,
                     borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: AppColors.border,
+                      width: 1,
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
+                        color: const Color(0xFF000000).withOpacity(0.2),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
                   child: Icon(
                     Icons.watch,
                     size: 60,
-                    color: Colors.white.withOpacity(0.9),
+                    color: AppColors.secondaryForeground,
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
                 
-                // App name
+                // App name with shadcn typography
                 Text(
                   'Smart WristBand',
                   style: GoogleFonts.inter(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    letterSpacing: -0.5,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.foreground,
+                    letterSpacing: -0.8,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 
-                // Decorative line
-                Container(
-                  width: 60,
-                  height: 2,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        const Color(0xFF4CAF50), // Success green
-                        const Color(0xFF2196F3), // Info blue
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(2),
+                // Subtitle
+                Text(
+                  'Wearable Technology Platform',
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.mutedForeground,
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
                 
                 // Tagline
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
                   child: Text(
                     'Connect Beyond Distance - Where Solitude Meets Community Through Wearable Technology',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
                       fontSize: 16,
                       fontWeight: FontWeight.w400,
-                      color: Colors.white.withOpacity(0.85),
-                      height: 1.4,
+                      color: AppColors.muted,
+                      height: 1.5,
                     ),
                   ),
                 ),
                 
-                const SizedBox(height: 40),
+                const SizedBox(height: 48),
                 
-                // Loading indicator
-                SizedBox(
-                  width: 24,
-                  height: 24,
+                // Loading indicator with shadcn styling
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppColors.border,
+                      width: 1,
+                    ),
+                  ),
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      const Color(0xFF4CAF50),
+                      AppColors.primary,
                     ),
                   ),
                 ),

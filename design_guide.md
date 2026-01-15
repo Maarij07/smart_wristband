@@ -3,35 +3,51 @@
 ## Overview
 This document outlines the design principles, components, and guidelines for the Smart Wristband Flutter application. All developers should follow these standards to ensure a consistent and cohesive user experience.
 
-## Color Palette
+## Design System
+The application follows the **shadcn/ui** design system for a modern, professional dark theme interface. All colors, components, and interactions are based on the official shadcn dark theme specification.
 
-### Primary Colors
-- **Black**: `#000000` - Used for primary backgrounds and text
-- **Dark Grey**: `#121212` - Secondary backgrounds
-- **Smoke Black**: `#1a1a1a` - Surface elements
+## Color Palette (shadcn Dark Theme)
 
-### Secondary Colors
-- **Smokey Grey**: `#2d2d2d` - Cards and containers
-- **Light Smokey Grey**: `#404040` - Borders and dividers
-- **Medium Grey**: `#666666` - Disabled elements
-- **Ash Grey**: `#808080` - Secondary text
+### Core shadcn Colors
+All colors are defined in `colors.json` and accessible via `AppColors` utility class.
 
-### Accent Colors
-- **Charcoal**: `#2f2f2f` - Interactive elements
-- **Slate**: `#3c3c3c` - Hover states
-- **Graphite**: `#4a4a4a` - Active states
-- **Stone**: `#555555` - Selection indicators
+- **background**: `#020817` - Main application background
+- **foreground**: `#f1f5f9` - Primary text and content
+- **card**: `#1e293b` - Card backgrounds and containers
+- **cardForeground**: `#f1f5f9` - Text on cards
+- **popover**: `#1e293b` - Popover/modal backgrounds
+- **popoverForeground**: `#f1f5f9` - Text in popovers
+- **primary**: `#3b82f6` - Primary actions and interactive elements
+- **primaryForeground**: `#f8fafc` - Text on primary elements
+- **secondary**: `#1e293b` - Secondary actions
+- **secondaryForeground**: `#e2e8f0` - Text on secondary elements
+- **muted**: `#cbd5e1` - Muted text and supporting content
+- **mutedForeground**: `#94a3b8` - Secondary text and placeholders
+- **accent**: `#334155` - Accent elements and highlights
+- **accentForeground**: `#e2e8f0` - Text on accent elements
+- **destructive**: `#ef4444` - Destructive actions (delete, error)
+- **destructiveForeground**: `#f8fafc` - Text on destructive elements
+- **border**: `#334155` - Borders and dividers
+- **input**: `#0f172a` - Input field backgrounds
+- **ring**: `#3b82f6` - Focus rings and active states
 
-### Status Colors
-- **Success**: `#4caf50` - Success messages and positive feedback
-- **Warning**: `#ff9800` - Warning messages and cautionary elements
-- **Error**: `#f44336` - Error messages and destructive actions
-- **Info**: `#2196f3` - Informational messages and notifications
+### Chart Colors
+- **chart1**: `#3b82f6` - Blue charts
+- **chart2**: `#8b5cf6` - Purple charts
+- **chart3**: `#ec4899` - Pink charts
+- **chart4**: `#f59e0b` - Amber charts
+- **chart5**: `#10b981` - Green charts
 
-### Text Colors
-- **Primary Text**: `#ffffff` - Primary content text
-- **Secondary Text**: `#b3b3b3` - Supporting text and labels
-- **Disabled Text**: `#666666` - Inactive elements
+### Legacy Colors (Deprecated)
+The following legacy colors are maintained for backward compatibility but should not be used in new components:
+- **black**: `#000000`
+- **darkGrey**: `#121212`
+- **smokeBlack**: `#1a1a1a`
+- **smokeyGrey**: `#2d2d2d`
+- **successMain**: `#4caf50`
+- **warningMain**: `#ff9800`
+- **errorMain**: `#f44336`
+- **infoMain**: `#2196f3`
 
 ## Typography
 
@@ -55,30 +71,34 @@ This document outlines the design principles, components, and guidelines for the
 ## Component Guidelines
 
 ### Buttons
-- Use shadcn_flutter's Button component
-- Primary buttons should use the main accent color
-- Secondary buttons should use light smokey grey with transparent background
-- All buttons should have appropriate padding: 16dp horizontal, 8dp vertical for medium size
-- Include ripple effect for touch feedback
-- Minimum touch target: 48x48dp
+- Use shadcn_flutter's Button component with `AppColors.primaryButtonStyle()`
+- Primary buttons: `background: primary (#3b82f6)`, `foregroundColor: primaryForeground (#f8fafc)`
+- Secondary buttons: Use `AppColors.outlineButtonStyle()` with border color `#334155`
+- All buttons: 44dp height, 8dp corner radius
+- Touch target minimum: 48x48dp
+- Hover states: Slight elevation change (2dp) with smooth transition
 
 ### Cards
-- Use smoke black (`#1a1a1a`) as the background
-- Apply subtle elevation shadows for depth
-- Maintain 16dp padding inside cards
-- Use rounded corners with 8dp radius
-- Include consistent spacing between elements
+- Background: `card (#1e293b)`
+- Border: `border (#334155)` with 1px width
+- Shadow: Custom shadow with 24px blur, 8px offset, 30% opacity
+- Padding: 32dp for main cards, 16dp for smaller components
+- Corner radius: 16dp for cards, 8dp for inputs
+- Use `AppColors.cardDecoration()` for consistent styling
 
 ### Lists
-- Use medium grey (`#666666`) dividers between items
-- Apply 16dp horizontal padding for list items
-- Maintain 8dp vertical padding for list items
-- Use ash grey (`#808080`) for secondary information
+- Dividers: `border (#334155)` with 1px height
+- Item padding: 16dp horizontal, 12dp vertical
+- Secondary text: `mutedForeground (#94a3b8)`
+- Active items: Highlight with `accent (#334155)` background
+- Hover effects: Subtle opacity change (hover:bg-accent)
 
 ### Navigation
-- Bottom navigation should use slate color (`#3c3c3c`) for inactive items
-- Active navigation items should use primary text color (`#ffffff`)
-- Drawer navigation should maintain dark theme with proper contrast ratios
+- Inactive items: `mutedForeground (#94a3b8)`
+- Active items: `foreground (#f1f5f9)`
+- Selected indicator: `primary (#3b82f6)` underline or dot
+- Background: `background (#020817)` or `card (#1e293b)`
+- Hover states: `accent (#334155)` background with smooth transition
 
 ## Spacing System
 - Base unit: 4dp
@@ -97,19 +117,32 @@ This document outlines the design principles, components, and guidelines for the
 - Follow platform conventions for iOS and Android
 
 ## Dark Theme Implementation
-- Main background: Black (`#000000`)
-- Surface elements: Smoke Black (`#1a1a1a`)
-- Cards and elevated surfaces: Dark Grey (`#121212`)
-- Text hierarchy maintained with proper contrast ratios
-- Ensure accessibility compliance (minimum 4.5:1 contrast ratio)
+
+### shadcn Dark Theme Standards
+- **Background**: `background (#020817)` - Primary app background
+- **Surfaces**: `card (#1e293b)` - Elevated containers and cards
+- **Inputs**: `input (#0f172a)` - Form field backgrounds
+- **Borders**: `border (#334155)` - All divider lines
+
+### Text Hierarchy
+1. **Primary**: `foreground (#f1f5f9)` - Headlines, main content
+2. **Secondary**: `muted (#cbd5e1)` - Supporting text
+3. **Tertiary**: `mutedForeground (#94a3b8)` - Labels, placeholders
+4. **Interactive**: `primary (#3b82f6)` - Links, active states
+
+### Accessibility Compliance
+- All text maintains minimum 4.5:1 contrast ratio
+- Focus states clearly visible with `ring (#3b82f6)`
+- Touch targets meet 48x48dp minimum
+- Semantic HTML structure for screen readers
 
 ## Iconography
-- Use Material Icons or Cupertino Icons as appropriate for platform
-- Consistent icon size: 24x24dp for standard icons
-- 32x32dp for larger interactive elements
-- Maintain consistent stroke width and style
-- Apply primary text color for active icons
-- Use secondary text color for inactive icons
+- **Standard icons**: 20x20dp with `mutedForeground (#94a3b8)`
+- **Large icons**: 24x24dp for primary actions
+- **Interactive icons**: `foreground (#f1f5f9)` when active
+- **Inactive icons**: `mutedForeground (#94a3b8)`
+- **Accent icons**: `primary (#3b82f6)` for important actions
+- Stroke width: 1.5px for consistent line weight
 
 ## Accessibility
 - Maintain sufficient color contrast ratios
@@ -125,49 +158,48 @@ This document outlines the design principles, components, and guidelines for the
 - Maintain 60fps for all animations
 - Provide reduced motion option for users who need it
 
-## Premium Design Approach
+## Premium Design Approach (shadcn Style)
 
 ### Core Philosophy
-Maintain a unified design language throughout the application. Every component should feel intentionally designed as part of a cohesive system rather than assembled from disparate sources.
+Follow shadcn's design philosophy: clean, minimal, and highly functional. Every element serves a purpose with intentional spacing, consistent typography, and thoughtful interactions.
 
-### Component Hierarchy
+### Component Architecture
 ```
-Design System → Foundation → Layout → Feature → Pages
+shadcn System → Color Tokens → Components → Features → Screens
 ```
 
-### Micro-interactions
-- Subtle hover states with 2-3% opacity changes
-- Smooth elevation transitions (150ms ease-in-out)
-- Loading skeletons matching exact component shapes
-- Staggered entrance animations (50-100ms delays)
+### Interaction Design
+- **Hover states**: Subtle background changes using `accent (#334155)`
+- **Focus states**: Clear `ring (#3b82f6)` indication with 2px width
+- **Active states**: Color changes with smooth 150ms transitions
+- **Loading states**: Skeleton loaders matching exact component dimensions
+- **Transitions**: `Curves.easeInOutCubic` for natural movement
 
-### Animation Framework
-- Natural physics: `Curves.easeInOutCubic`
-- Timing standards:
-  - Quick actions: 150-200ms
-  - Page transitions: 300-400ms
-  - Modal entrances: 250-350ms
-- Performance requirement: 60fps minimum
+### Animation Standards
+- **Micro-interactions**: 150-200ms duration
+- **Page transitions**: 300ms with fade + slide combinations
+- **Modal entrances**: 250ms scale + fade effect
+- **Staggered animations**: 50-100ms delays between elements
+- **Performance**: Locked at 60fps with hardware acceleration
 
-### Premium Visual Elements
+### Visual Design Principles
 
-#### Glass Morphism Effects
-- Backdrop blur + transparency combinations
-- Subtle inner shadows instead of heavy outer ones
-- Consistent 16dp padding with optical adjustments
-- Micro-rounded corners (6-8dp) for premium feel
+#### Depth & Layering
+- Cards float above background with subtle shadows
+- Inputs have clear visual hierarchy with proper borders
+- Overlays use semi-transparent backgrounds (`rgba(15, 23, 42, 0.8)`)
 
 #### Typography System
-- Primary font: Inter (clean, professional)
-- Strict 4px baseline grid
-- Optical sizing for different weights
-- Dynamic scaling based on content density
+- **Font**: Inter with optical sizing
+- **Hierarchy**: Clear distinction between display, body, and caption text
+- **Line heights**: 1.5x for body text, 1.2x for headings
+- **Letter spacing**: Tight tracking for headings (-0.5px to -1px)
 
-#### Color Application
-- Primary black (#000000) for structural elements
-- Smokey grey gradients for depth layers
-- Accent colors only for interactive states
-- Subtle transparency (8%, 12%, 16%) for overlays
+#### Color Strategy
+- **Functional use**: Colors serve specific purposes (primary for actions, destructive for warnings)
+- **Consistent application**: Same color meanings across all components
+- **Accessibility first**: All color combinations pass WCAG AA standards
+- **Theme flexibility**: Easy to adapt to different color schemes
 
 ## Responsive Design
 - Design for various screen sizes and orientations
@@ -176,25 +208,94 @@ Design System → Foundation → Layout → Feature → Pages
 - Ensure content remains readable on all devices
 - Test on common device sizes regularly
 
-## Font Family Installation
+## Implementation Standards
 
-Added Inter font family for premium typography:
+### Color Management
+All colors must be accessed through the `AppColors` utility class:
 
-```yaml
-dependencies:
-  google_fonts: ^6.1.0
+```dart
+import '../utils/colors.dart';
+
+// Good - Using color constants
+Container(
+  color: AppColors.card,
+  child: Text('Content', style: TextStyle(color: AppColors.foreground)),
+)
+
+// Bad - Hardcoded colors
+Container(
+  color: const Color(0xFF1e293b), // ❌ Don't do this
+  child: Text('Content', style: TextStyle(color: const Color(0xFFf1f5f9))),
+)
 ```
 
-Usage in components:
-```dart
-import 'package:google_fonts/google_fonts.dart';
+### Helper Methods
+Use provided utility methods for consistent styling:
 
+```dart
+// Card styling
+Container(
+  decoration: AppColors.cardDecoration(),
+  child: childWidget,
+)
+
+// Input fields
+TextField(
+  decoration: AppColors.textFieldInputDecoration(
+    labelText: 'Email',
+    hintText: 'Enter your email',
+  ),
+)
+
+// Buttons
+ElevatedButton(
+  style: AppColors.primaryButtonStyle(),
+  onPressed: () {},
+  child: Text('Submit'),
+)
+```
+
+### Font Implementation
+Typography uses Google Fonts Inter with proper shadcn weights:
+
+```dart
 Text(
-  'Dashboard',
+  'Welcome back',
   style: GoogleFonts.inter(
     fontSize: 24,
-    fontWeight: FontWeight.w600,
-    color: Colors.white,
+    fontWeight: FontWeight.w800,  // Extra bold for headers
+    color: AppColors.foreground,
+    letterSpacing: -0.8,
+  ),
+)
+
+Text(
+  'Sign in to your account',
+  style: GoogleFonts.inter(
+    fontSize: 16,
+    fontWeight: FontWeight.w400,  // Regular for body text
+    color: AppColors.mutedForeground,
   ),
 )
 ```
+
+### File Structure
+```
+lib/
+├── screens/
+│   ├── splash_screen.dart
+│   └── signin_screen.dart
+├── utils/
+│   └── colors.dart          ← Color constants and helpers
+└── main.dart
+
+assets/
+└── colors.json              ← Source of truth for all colors
+```
+
+### Development Workflow
+1. Reference colors from `colors.json` first
+2. Add new colors to `AppColors` class
+3. Use helper methods instead of manual styling
+4. Test color contrast with accessibility tools
+5. Maintain consistency across all components
