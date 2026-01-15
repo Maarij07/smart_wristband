@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../utils/colors.dart';
 import 'forgot_password_screen.dart';
 import 'signup_screen.dart';
+import 'home_screen.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -12,8 +13,8 @@ class SignInScreen extends StatefulWidget {
 
 class _SignInScreenState extends State<SignInScreen>
     with SingleTickerProviderStateMixin {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController(text: 'test@gmail.com');
+  final TextEditingController _passwordController = TextEditingController(text: 'Test123');
   bool _rememberMe = false;
   bool _obscurePassword = true;
   bool _isLoading = false;
@@ -62,26 +63,39 @@ class _SignInScreenState extends State<SignInScreen>
     await Future.delayed(const Duration(seconds: 2));
     setState(() => _isLoading = false);
 
+    // Check for dummy credentials
+    bool isDummyCredentials = _emailController.text.trim() == 'test@gmail.com' && 
+                              _passwordController.text == 'Test123';
+
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Welcome back!',
-            style: TextStyle(
-              color: AppColors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
+      if (isDummyCredentials) {
+        // Navigate to home screen for dummy credentials
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+        );
+      } else {
+        // Show welcome message for other credentials
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Welcome back!',
+              style: TextStyle(
+                color: AppColors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
             ),
+            backgroundColor: AppColors.black,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: const EdgeInsets.all(16),
+            duration: const Duration(seconds: 2),
           ),
-          backgroundColor: AppColors.black,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          margin: const EdgeInsets.all(16),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+        );
+      }
     }
   }
 
@@ -154,44 +168,68 @@ class _SignInScreenState extends State<SignInScreen>
 
                     // Remember me checkbox
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _rememberMe = !_rememberMe;
-                            });
-                          },
-                          child: Container(
-                            width: 20,
-                            height: 20,
-                            decoration: BoxDecoration(
-                              color: _rememberMe 
-                                  ? AppColors.black
-                                  : AppColors.surface,
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(
-                                color: _rememberMe 
-                                    ? AppColors.black
-                                    : AppColors.divider,
-                                width: 1.5,
+                        Row(
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _rememberMe = !_rememberMe;
+                                });
+                              },
+                              child: Container(
+                                width: 20,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  color: _rememberMe 
+                                      ? AppColors.black
+                                      : AppColors.surface,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                    color: _rememberMe 
+                                        ? AppColors.black
+                                        : AppColors.divider,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: _rememberMe
+                                    ? Icon(
+                                        Icons.check,
+                                        size: 16,
+                                        color: AppColors.white,
+                                      )
+                                    : null,
                               ),
                             ),
-                            child: _rememberMe
-                                ? Icon(
-                                    Icons.check,
-                                    size: 16,
-                                    color: AppColors.white,
-                                  )
-                                : null,
-                          ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Remember me',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Remember me',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                            color: AppColors.textSecondary,
+                        // Forgot password moved to flex end
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ForgotPasswordScreen(),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            'Forgot your password?',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.black,
+                            ),
                           ),
                         ),
                       ],
@@ -222,29 +260,6 @@ class _SignInScreenState extends State<SignInScreen>
                                   color: AppColors.white,
                                 ),
                               ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Forgot password
-                    Center(
-                      child: TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ForgotPasswordScreen(),
-                            ),
-                          );
-                        },
-                        child: Text(
-                          'Forgot your password?',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.black,
-                          ),
-                        ),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -280,24 +295,34 @@ class _SignInScreenState extends State<SignInScreen>
                     const SizedBox(height: 24),
 
                     // Sign up option
-                    Center(
-                      child: Text.rich(
-                        TextSpan(
-                          text: "Don't have an account? ",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                            color: AppColors.textSecondary,
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SignUpScreen(),
                           ),
-                          children: [
-                            TextSpan(
-                              text: 'Sign up',
-                              style: TextStyle(
-                                color: AppColors.black,
-                                fontWeight: FontWeight.w500,
-                              ),
+                        );
+                      },
+                      child: Center(
+                        child: Text.rich(
+                          TextSpan(
+                            text: "Don't have an account? ",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.textSecondary,
                             ),
-                          ],
+                            children: [
+                              TextSpan(
+                                text: 'Sign up',
+                                style: TextStyle(
+                                  color: AppColors.black,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
