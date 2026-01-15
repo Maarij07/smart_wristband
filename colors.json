@@ -1,0 +1,49 @@
+{
+  "primary": {
+    "black": "#000000",
+    "darkGrey": "#121212",
+    "smokeBlack": "#1a1a1a"
+  },
+  "secondary": {
+    "smokeyGrey": "#2d2d2d",
+    "lightSmokeyGrey": "#404040",
+    "mediumGrey": "#666666",
+    "ashGrey": "#808080"
+  },
+  "accent": {
+    "charcoal": "#2f2f2f",
+    "slate": "#3c3c3c",
+    "graphite": "#4a4a4a",
+    "stone": "#555555"
+  },
+  "background": {
+    "mainBackground": "#000000",
+    "cardBackground": "#121212",
+    "surface": "#1a1a1a"
+  },
+  "text": {
+    "primaryText": "#ffffff",
+    "secondaryText": "#b3b3b3",
+    "disabledText": "#666666"
+  },
+  "border": {
+    "borderColor": "#333333",
+    "divider": "#262626"
+  },
+  "success": {
+    "successMain": "#4caf50",
+    "successLight": "#66bb6a"
+  },
+  "warning": {
+    "warningMain": "#ff9800",
+    "warningLight": "#ffa726"
+  },
+  "error": {
+    "errorMain": "#f44336",
+    "errorLight": "#ef5350"
+  },
+  "info": {
+    "infoMain": "#2196f3",
+    "infoLight": "#42a5f5"
+  }
+}
