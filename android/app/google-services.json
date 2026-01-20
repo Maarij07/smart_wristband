@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "365476302448",
+    "project_id": "machadev-f5021",
+    "storage_bucket": "machadev-f5021.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:365476302448:android:099c91304ccf1062db2eb5",
+        "android_client_info": {
+          "package_name": "com.example.smart_wristband"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAE7b5_0V0FnwVNk9-jwQtaxb4xF_gVkAw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/colors.dart';
-import 'signin_screen.dart';
+import 'onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -49,7 +49,7 @@ class _SplashScreenState extends State<SplashScreen>
     if (mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const SignInScreen()),
+        MaterialPageRoute(builder: (context) => const OnboardingScreen()),
       );
     }
   }

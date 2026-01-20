@@ -1,0 +1,10 @@
+# Professional Onboarding Image Prompts
+
+## Screen 1: Set Your Status
+- **Prompt**: "Professional minimalist vector illustration for mobile app onboarding screen, featuring elegant abstract icons representing relationship status selection, clean geometric shapes with negative space, sophisticated monochromatic design with 10% subtle blue accent (#2563EB), flat vector art style, modern digital interface aesthetic, balanced composition with ample white space, clean线条 design suitable for high-end mobile application, no human figures, abstract symbolic representation of status setting, professional UI/UX design standard, Behance quality vector artwork"
+
+## Screen 2: Meet Like-Minded People
+- **Prompt**: "Professional minimalist vector illustration for mobile app onboarding screen, showcasing abstract connection symbols and proximity indicators, sophisticated monochromatic palette with 10% subtle green accent (#16A34A), clean geometric compositions, flat vector design with perfect symmetry, elegant negative space usage, no literal portraits, abstract representation of networking/connection, modern dating app aesthetic, professional UI/UX standards, balanced layout suitable for onboarding screen, Behance-quality vector artwork with digital interface inspiration"
+
+## Screen 3: Stay Connected
+- **Prompt**: "Professional minimalist vector illustration for mobile app onboarding screen, featuring sleek abstract icons representing notifications and connectivity, sophisticated monochromatic design with 10% warm amber accent (#CA8A04), clean geometric patterns, flat vector art with subtle gradients, elegant negative space composition, abstract symbolic representation of smart connectivity, no literal device images, professional mobile app interface aesthetic, balanced symmetrical design, high-end UI/UX quality, Behance-standard vector artwork suitable for premium application"

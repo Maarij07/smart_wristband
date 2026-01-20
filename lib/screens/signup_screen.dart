@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
 import '../utils/colors.dart';
 import '../services/firebase_service.dart';
-import 'forgot_password_screen.dart';
+import 'connect_wristband_screen.dart';
 
-class SignInScreen extends StatefulWidget {
-  const SignInScreen({super.key});
+class SignUpScreen extends StatefulWidget {
+  const SignUpScreen({super.key});
 
   @override
-  State<SignInScreen> createState() => _SignInScreenState();
+  State<SignUpScreen> createState() => _SignUpScreenState();
 }
 
-class _SignInScreenState extends State<SignInScreen>
+class _SignUpScreenState extends State<SignUpScreen>
     with SingleTickerProviderStateMixin {
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  bool _rememberMe = false;
+  final TextEditingController _confirmPasswordController = TextEditingController();
+  
+  bool _agreeToTerms = false;
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   bool _isLoading = false;
 
   late AnimationController _controller;
@@ -52,16 +56,44 @@ class _SignInScreenState extends State<SignInScreen>
   @override
   void dispose() {
     _controller.dispose();
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  Future<void> _handleSignIn() async {
+  Future<void> _handleSignUp() async {
+    if (!_agreeToTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please agree to the Terms and Conditions',
+            style: TextStyle(color: AppColors.white),
+          ),
+          backgroundColor: AppColors.black,
+        ),
+      );
+      return;
+    }
+
+    if (_passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Passwords do not match',
+            style: TextStyle(color: AppColors.white),
+          ),
+          backgroundColor: AppColors.black,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
     
     try {
-      final user = await FirebaseService.signInWithEmailAndPassword(
+      final user = await FirebaseService.createUserWithEmailAndPassword(
         _emailController.text.trim(),
         _passwordController.text,
       );
@@ -69,38 +101,41 @@ class _SignInScreenState extends State<SignInScreen>
       setState(() => _isLoading = false);
       
       if (user != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Welcome back, ${user.email}!',
-              style: TextStyle(
-                color: AppColors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            backgroundColor: AppColors.black,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            margin: const EdgeInsets.all(16),
-            duration: const Duration(seconds: 2),
-          ),
+        // Add user to Firestore
+        await FirebaseService.addUser(
+          uid: user.uid,
+          email: user.email!,
+          name: _nameController.text.trim(),
         );
         
-        // Navigate to dashboard or main app screen
-        // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => DashboardScreen()));
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Invalid email or password',
-              style: TextStyle(color: AppColors.white),
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Account created successfully!',
+                style: TextStyle(color: AppColors.white),
+              ),
+              backgroundColor: AppColors.black,
             ),
-            backgroundColor: AppColors.black,
-          ),
-        );
+          );
+        }
+        
+        // Navigate to connect wristband screen
+        if (mounted) {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const ConnectWristbandScreen()));
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Registration failed',
+                style: TextStyle(color: AppColors.white),
+              ),
+              backgroundColor: AppColors.black,
+            ),
+          );
+        }
       }
     } catch (e) {
       setState(() => _isLoading = false);
@@ -108,7 +143,7 @@ class _SignInScreenState extends State<SignInScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Sign in failed: ${e.toString()}',
+              'Registration failed: ${e.toString()}',
               style: TextStyle(color: AppColors.white),
             ),
             backgroundColor: AppColors.black,
@@ -122,20 +157,37 @@ class _SignInScreenState extends State<SignInScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: AppColors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Create Account',
+          style: TextStyle(
+            color: AppColors.black,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        centerTitle: true,
+      ),
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
           child: SlideTransition(
             position: _slideAnimation,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 80, 24, 24),
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
               child: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Header
                     Text(
-                      'Welcome back',
+                      'Create your account',
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.w700,
@@ -143,9 +195,9 @@ class _SignInScreenState extends State<SignInScreen>
                         height: 1.1,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 16),
                     Text(
-                      'Sign in to your account',
+                      'Join our community today',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w400,
@@ -155,10 +207,18 @@ class _SignInScreenState extends State<SignInScreen>
                     ),
                     const SizedBox(height: 40),
 
+                    // Name Field
+                    _buildMinimalTextField(
+                      controller: _nameController,
+                      label: 'Full Name',
+                      hint: 'John Doe',
+                    ),
+                    const SizedBox(height: 24),
+
                     // Email Field
                     _buildMinimalTextField(
                       controller: _emailController,
-                      label: 'Email',
+                      label: 'Email Address',
                       hint: 'your@email.com',
                       keyboardType: TextInputType.emailAddress,
                     ),
@@ -185,31 +245,52 @@ class _SignInScreenState extends State<SignInScreen>
                     ),
                     const SizedBox(height: 24),
 
-                    // Remember me checkbox
+                    // Confirm Password Field
+                    _buildMinimalTextField(
+                      controller: _confirmPasswordController,
+                      label: 'Confirm Password',
+                      hint: '••••••••',
+                      obscureText: _obscureConfirmPassword,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                          color: AppColors.textSecondary,
+                          size: 20,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscureConfirmPassword = !_obscureConfirmPassword;
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Terms Agreement
                     Row(
                       children: [
                         GestureDetector(
                           onTap: () {
                             setState(() {
-                              _rememberMe = !_rememberMe;
+                              _agreeToTerms = !_agreeToTerms;
                             });
                           },
                           child: Container(
                             width: 20,
                             height: 20,
                             decoration: BoxDecoration(
-                              color: _rememberMe 
+                              color: _agreeToTerms 
                                   ? AppColors.black
                                   : AppColors.surface,
                               borderRadius: BorderRadius.circular(4),
                               border: Border.all(
-                                color: _rememberMe 
+                                color: _agreeToTerms 
                                     ? AppColors.black
                                     : AppColors.divider,
                                 width: 1.5,
                               ),
                             ),
-                            child: _rememberMe
+                            child: _agreeToTerms
                                 ? Icon(
                                     Icons.check,
                                     size: 16,
@@ -219,24 +300,37 @@ class _SignInScreenState extends State<SignInScreen>
                           ),
                         ),
                         const SizedBox(width: 12),
-                        Text(
-                          'Remember me',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                            color: AppColors.textSecondary,
+                        Expanded(
+                          child: Text.rich(
+                            TextSpan(
+                              text: 'I agree to the ',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                                color: AppColors.textSecondary,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: 'Terms and Conditions',
+                                  style: TextStyle(
+                                    color: AppColors.black,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 32),
 
-                    // Sign In Button
+                    // Sign Up Button
                     SizedBox(
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : _handleSignIn,
+                        onPressed: _isLoading ? null : _handleSignUp,
                         style: AppColors.primaryButtonStyle(),
                         child: _isLoading
                             ? SizedBox(
@@ -248,7 +342,7 @@ class _SignInScreenState extends State<SignInScreen>
                                 ),
                               )
                             : Text(
-                                'Sign in',
+                                'Create Account',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -259,64 +353,11 @@ class _SignInScreenState extends State<SignInScreen>
                     ),
                     const SizedBox(height: 24),
 
-                    // Forgot password
-                    Center(
-                      child: TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ForgotPasswordScreen(),
-                            ),
-                          );
-                        },
-                        child: Text(
-                          'Forgot your password?',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.black,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Divider
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            height: 1,
-                            color: AppColors.divider,
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            'or',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w400,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Container(
-                            height: 1,
-                            color: AppColors.divider,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Sign up option
+                    // Sign in option
                     Center(
                       child: Text.rich(
                         TextSpan(
-                          text: "Don't have an account? ",
+                          text: "Already have an account? ",
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w400,
@@ -324,7 +365,7 @@ class _SignInScreenState extends State<SignInScreen>
                           ),
                           children: [
                             TextSpan(
-                              text: 'Sign up',
+                              text: 'Sign in',
                               style: TextStyle(
                                 color: AppColors.black,
                                 fontWeight: FontWeight.w500,
@@ -334,7 +375,6 @@ class _SignInScreenState extends State<SignInScreen>
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
                   ],
                 ),
               ),

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'config/firebase_config.dart';
 import 'screens/splash_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await FirebaseConfig.initializeApp();
   runApp(const MyApp());
 }
 
@@ -23,8 +26,6 @@ class MyApp extends StatelessWidget {
           onSecondary: Color(0xFF000000),
           surface: Color(0xFFFFFFFF),
           onSurface: Color(0xFF000000),
-          background: Color(0xFFFFFFFF),
-          onBackground: Color(0xFF000000),
           error: Color(0xFF000000),
           onError: Color(0xFFFFFFFF),
         ),
