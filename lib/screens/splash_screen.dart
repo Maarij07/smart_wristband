@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import '../utils/colors.dart';
+import 'signin_screen.dart';
+import 'home_screen.dart';
 import 'onboarding_screen.dart';
+import 'permission_request_screen.dart';
+import '../services/auth_service.dart';
+import '../services/permission_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -46,11 +51,39 @@ class _SplashScreenState extends State<SplashScreen>
   void _startAnimation() async {
     await _controller.forward();
     await Future.delayed(const Duration(milliseconds: 1500));
+    
+    // Create a temporary variable to hold the result
+    final shouldAutoLogin = await AuthService.shouldAutoLogin();
+              
+    // Check if all required permissions are already granted
+    final locationGranted = await PermissionService.isLocationPermissionGranted();
+    final notificationGranted = await PermissionService.isNotificationPermissionGranted();
+    final allPermissionsGranted = locationGranted && notificationGranted;
+              
+    // Navigate after a small delay to ensure the UI is ready
     if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const OnboardingScreen()),
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          if (shouldAutoLogin) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const HomeScreen()),
+            );
+          } else if (allPermissionsGranted) {
+            // If all permissions are already granted, go directly to sign in
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const SignInScreen()),
+            );
+          } else {
+            // Show permission request screen if permissions are missing
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const PermissionRequestScreen()),
+            );
+          }
+        }
+      });
     }
   }
 

@@ -89,7 +89,7 @@ class EmergencySOSScreen extends StatefulWidget {
 }
 
 class _EmergencySOSScreenState extends State<EmergencySOSScreen> {
-  final TextEditingController _pinController = TextEditingController();
+  final List<TextEditingController> _controllers = List.generate(4, (index) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(4, (index) => FocusNode());
   String? _sosPin;
   bool _isAlarmPlaying = false;
@@ -127,7 +127,9 @@ class _EmergencySOSScreenState extends State<EmergencySOSScreen> {
   @override
   void dispose() {
     _stopEmergencyAlarm();
-    _pinController.dispose();
+    for (var controller in _controllers) {
+      controller.dispose();
+    }
     for (var node in _focusNodes) {
       node.dispose();
     }
@@ -142,8 +144,9 @@ class _EmergencySOSScreenState extends State<EmergencySOSScreen> {
   }
 
   void _onPinChanged() {
-    if (_pinController.text.length == 4) {
-      if (_pinController.text == _sosPin) {
+    String enteredPin = _controllers.map((c) => c.text).join();
+    if (enteredPin.length == 4) {
+      if (enteredPin == _sosPin) {
         // Correct PIN - stop emergency alarm and close screen
         _stopEmergencyAlarm();
         Navigator.pop(context); // Close the emergency screen
@@ -158,8 +161,10 @@ class _EmergencySOSScreenState extends State<EmergencySOSScreen> {
             backgroundColor: AppColors.black,
           ),
         );
-        // Clear the controller
-        _pinController.clear();
+        // Clear all controllers
+        for (var controller in _controllers) {
+          controller.clear();
+        }
         for (var node in _focusNodes) {
           node.requestFocus();
         }
@@ -281,7 +286,7 @@ class _EmergencySOSScreenState extends State<EmergencySOSScreen> {
                             ),
                           ),
                           child: TextField(
-                            controller: _pinController,
+                            controller: _controllers[index],
                             focusNode: _focusNodes[index],
                             textAlign: TextAlign.center,
                             maxLength: 1,
@@ -291,9 +296,18 @@ class _EmergencySOSScreenState extends State<EmergencySOSScreen> {
                               fontWeight: FontWeight.w600,
                               color: AppColors.white, // White text for PIN digits
                             ),
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               counterText: '',
                               border: InputBorder.none,
+                              suffixIcon: _controllers[index].text.isNotEmpty
+                                  ? IconButton(
+                                      icon: Icon(Icons.close, size: 16, color: AppColors.white),
+                                      onPressed: () {
+                                        _controllers[index].clear();
+                                        _onPinChanged();
+                                      },
+                                    )
+                                  : null,
                             ),
                             onChanged: (value) {
                               if (value.isNotEmpty && index < 3) {

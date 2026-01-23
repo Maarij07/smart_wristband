@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import '../utils/colors.dart';
 import '../services/firebase_service.dart';
+import '../services/auth_service.dart';
 import 'forgot_password_screen.dart';
+import 'signup_screen.dart';
+import 'home_screen.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -69,6 +72,10 @@ class _SignInScreenState extends State<SignInScreen>
       setState(() => _isLoading = false);
       
       if (user != null && mounted) {
+        // Save remember me preference and login status
+        await AuthService.saveRememberMe(_rememberMe);
+        await AuthService.saveLoginStatus(true);
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -89,8 +96,8 @@ class _SignInScreenState extends State<SignInScreen>
           ),
         );
         
-        // Navigate to dashboard or main app screen
-        // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => DashboardScreen()));
+        // Navigate to home screen with tabs
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen()));
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -314,23 +321,28 @@ class _SignInScreenState extends State<SignInScreen>
 
                     // Sign up option
                     Center(
-                      child: Text.rich(
-                        TextSpan(
-                          text: "Don't have an account? ",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                            color: AppColors.textSecondary,
-                          ),
-                          children: [
-                            TextSpan(
-                              text: 'Sign up',
-                              style: TextStyle(
-                                color: AppColors.black,
-                                fontWeight: FontWeight.w500,
-                              ),
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const SignUpScreen()));
+                        },
+                        child: Text.rich(
+                          TextSpan(
+                            text: "Don't have an account? ",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.textSecondary,
                             ),
-                          ],
+                            children: [
+                              TextSpan(
+                                text: 'Sign up',
+                                style: TextStyle(
+                                  color: AppColors.black,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),

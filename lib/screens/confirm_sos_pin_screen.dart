@@ -12,13 +12,15 @@ class ConfirmSOSPinScreen extends StatefulWidget {
 }
 
 class _ConfirmSOSPinScreenState extends State<ConfirmSOSPinScreen> {
-  final TextEditingController _confirmPinController = TextEditingController();
+  final List<TextEditingController> _controllers = List.generate(4, (index) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(4, (index) => FocusNode());
   bool _pinsMatch = true;
   
   @override
   void dispose() {
-    _confirmPinController.dispose();
+    for (var controller in _controllers) {
+      controller.dispose();
+    }
     for (var node in _focusNodes) {
       node.dispose();
     }
@@ -26,8 +28,9 @@ class _ConfirmSOSPinScreenState extends State<ConfirmSOSPinScreen> {
   }
 
   void _onPinChanged() {
-    if (_confirmPinController.text.length == 4) {
-      if (_confirmPinController.text == widget.pin) {
+    String enteredPin = _controllers.map((c) => c.text).join();
+    if (enteredPin.length == 4) {
+      if (enteredPin == widget.pin) {
         // PINs match - save and go to home
         _saveSOSPin(widget.pin);
         Navigator.pushAndRemoveUntil(
@@ -40,8 +43,10 @@ class _ConfirmSOSPinScreenState extends State<ConfirmSOSPinScreen> {
         setState(() {
           _pinsMatch = false;
         });
-        // Clear both controllers
-        _confirmPinController.clear();
+        // Clear all controllers
+        for (var controller in _controllers) {
+          controller.clear();
+        }
         for (var node in _focusNodes) {
           node.unfocus();
         }
@@ -148,7 +153,7 @@ class _ConfirmSOSPinScreenState extends State<ConfirmSOSPinScreen> {
                       ),
                     ),
                     child: TextField(
-                      controller: _confirmPinController,
+                      controller: _controllers[index],
                       focusNode: _focusNodes[index],
                       textAlign: TextAlign.center,
                       maxLength: 1,
@@ -158,9 +163,18 @@ class _ConfirmSOSPinScreenState extends State<ConfirmSOSPinScreen> {
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary,
                       ),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         counterText: '',
                         border: InputBorder.none,
+                        suffixIcon: _controllers[index].text.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(Icons.close, size: 16, color: AppColors.textSecondary),
+                                onPressed: () {
+                                  _controllers[index].clear();
+                                  _onPinChanged();
+                                },
+                              )
+                            : null,
                       ),
                       onChanged: (value) {
                         if (value.isNotEmpty && index < 3) {

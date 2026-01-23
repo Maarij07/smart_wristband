@@ -1,7 +1,9 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import '../utils/colors.dart';
 import '../services/firebase_service.dart';
-import 'connect_wristband_screen.dart';
+import '../services/auth_service.dart';
+import 'home_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -108,34 +110,31 @@ class _SignUpScreenState extends State<SignUpScreen>
           name: _nameController.text.trim(),
         );
         
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Account created successfully!',
-                style: TextStyle(color: AppColors.white),
-              ),
-              backgroundColor: AppColors.black,
-            ),
-          );
-        }
+        // Clear any existing login status
+        await AuthService.logout();
         
-        // Navigate to connect wristband screen
-        if (mounted) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const ConnectWristbandScreen()));
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Registration failed',
-                style: TextStyle(color: AppColors.white),
-              ),
-              backgroundColor: AppColors.black,
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Account created successfully!',
+              style: TextStyle(color: AppColors.white),
             ),
-          );
-        }
+            backgroundColor: AppColors.black,
+          ),
+        );
+        
+        // Navigate to home screen
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen()));
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Registration failed',
+              style: TextStyle(color: AppColors.white),
+            ),
+            backgroundColor: AppColors.black,
+          ),
+        );
       }
     } catch (e) {
       setState(() => _isLoading = false);
@@ -157,30 +156,13 @@ class _SignUpScreenState extends State<SignUpScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppColors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Create Account',
-          style: TextStyle(
-            color: AppColors.black,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        centerTitle: true,
-      ),
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
           child: SlideTransition(
             position: _slideAnimation,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+              padding: const EdgeInsets.fromLTRB(24, 40, 24, 24), // Increased top padding
               child: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -195,7 +177,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                         height: 1.1,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 8),
                     Text(
                       'Join our community today',
                       style: TextStyle(
@@ -355,23 +337,28 @@ class _SignUpScreenState extends State<SignUpScreen>
 
                     // Sign in option
                     Center(
-                      child: Text.rich(
-                        TextSpan(
-                          text: "Already have an account? ",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                            color: AppColors.textSecondary,
-                          ),
-                          children: [
-                            TextSpan(
-                              text: 'Sign in',
-                              style: TextStyle(
-                                color: AppColors.black,
-                                fontWeight: FontWeight.w500,
-                              ),
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.pop(context);
+                        },
+                        child: Text.rich(
+                          TextSpan(
+                            text: "Already have an account? ",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.textSecondary,
                             ),
-                          ],
+                            children: [
+                              TextSpan(
+                                text: 'Sign in',
+                                style: TextStyle(
+                                  color: AppColors.black,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),

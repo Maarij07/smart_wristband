@@ -10,12 +10,14 @@ class SetSOSPinScreen extends StatefulWidget {
 }
 
 class _SetSOSPinScreenState extends State<SetSOSPinScreen> {
-  final TextEditingController _pinController = TextEditingController();
+  final List<TextEditingController> _controllers = List.generate(4, (index) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(4, (index) => FocusNode());
   
   @override
   void dispose() {
-    _pinController.dispose();
+    for (var controller in _controllers) {
+      controller.dispose();
+    }
     for (var node in _focusNodes) {
       node.dispose();
     }
@@ -23,12 +25,13 @@ class _SetSOSPinScreenState extends State<SetSOSPinScreen> {
   }
 
   void _onPinChanged() {
-    if (_pinController.text.length == 4) {
+    String pin = _controllers.map((c) => c.text).join();
+    if (pin.length == 4) {
       // Navigate to confirm PIN screen
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ConfirmSOSPinScreen(pin: _pinController.text),
+          builder: (context) => ConfirmSOSPinScreen(pin: pin),
         ),
       );
     }
@@ -118,7 +121,7 @@ class _SetSOSPinScreenState extends State<SetSOSPinScreen> {
                       ),
                     ),
                     child: TextField(
-                      controller: _pinController,
+                      controller: _controllers[index],
                       focusNode: _focusNodes[index],
                       textAlign: TextAlign.center,
                       maxLength: 1,
@@ -128,9 +131,18 @@ class _SetSOSPinScreenState extends State<SetSOSPinScreen> {
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary,
                       ),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         counterText: '',
                         border: InputBorder.none,
+                        suffixIcon: _controllers[index].text.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(Icons.close, size: 16, color: AppColors.textSecondary),
+                                onPressed: () {
+                                  _controllers[index].clear();
+                                  _onPinChanged();
+                                },
+                              )
+                            : null,
                       ),
                       onChanged: (value) {
                         if (value.isNotEmpty && index < 3) {
