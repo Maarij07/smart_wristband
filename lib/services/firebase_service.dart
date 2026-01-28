@@ -74,16 +74,52 @@ class FirebaseService {
     required String uid,
     required String email,
     required String name,
+    String? phoneNumber,
+    String? bio,
+    String? relationshipStatus,
+    Map<String, String>? socialMediaLinks,
+    Map<String, String>? privacySettings,
   }) async {
     try {
       await _firestore.collection('users').doc(uid).set({
         'uid': uid,
         'email': email,
         'name': name,
+        'phoneNumber': phoneNumber,
+        'bio': bio,
+        'relationshipStatus': relationshipStatus ?? 'Single',
+        'socialMediaLinks': socialMediaLinks,
+        'privacySettings': privacySettings ?? {
+          'profileAccess': 'anyone',
+          'locationAccess': 'friends_only',
+          'photoAccess': 'friends_only',
+        },
         'createdAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
       // Add user error
+    }
+  }
+
+  static Future<void> updateUserProfile({
+    required String uid,
+    String? phoneNumber,
+    String? bio,
+    String? relationshipStatus,
+    Map<String, String>? socialMediaLinks,
+    Map<String, String>? privacySettings,
+  }) async {
+    try {
+      await _firestore.collection('users').doc(uid).update({
+        if (phoneNumber != null) 'phoneNumber': phoneNumber,
+        if (bio != null) 'bio': bio,
+        if (relationshipStatus != null) 'relationshipStatus': relationshipStatus,
+        if (socialMediaLinks != null) 'socialMediaLinks': socialMediaLinks,
+        if (privacySettings != null) 'privacySettings': privacySettings,
+      });
+    } catch (e) {
+      // Update user error
+      print('Error updating user profile: $e');
     }
   }
 }

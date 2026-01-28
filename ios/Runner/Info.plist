@@ -43,4 +43,10 @@
     <!-- Audio permissions for emergency SOS -->
     <key>NSMicrophoneUsageDescription</key>
     <string>This app needs microphone access to play emergency sounds even when silent mode is enabled</string>
+    
+    <!-- Bluetooth permissions -->
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>This app uses Bluetooth to connect to smart wristbands</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>This app uses Bluetooth to connect to smart wristbands</string>
 </dict>

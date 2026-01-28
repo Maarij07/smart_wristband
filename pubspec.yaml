@@ -63,6 +63,10 @@ dependencies:
   smooth_page_indicator: ^1.1.0
   # Permission handling
   permission_handler: ^11.0.1
+  flutter_blue_plus: ^2.1.0
+  audioplayers: ^6.5.1
+  audio_session: ^0.1.25
+  provider: ^6.1.5+1
 
 dev_dependencies:
   flutter_test:

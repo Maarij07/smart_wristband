@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:location/location.dart';
-import 'package:provider/provider.dart';
 import '../utils/colors.dart';
-import '../services/user_context.dart';
+import 'set_sos_pin_screen.dart';
 import 'chat_screen.dart';
 import 'sos_alert_screen.dart';
 import 'signin_screen.dart';
@@ -97,27 +96,11 @@ class _HomeTabPage extends StatefulWidget {
 }
 
 class _HomeTabPageState extends State<_HomeTabPage> {
-  // Wristband connection state
-  bool _isConnected = false;
-  String _deviceName = 'No device paired';
-  String _relationshipStatus = 'Not paired';
-  
-  @override
-  void initState() {
-    super.initState();
-    // Initialize with context data if available
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final userContext = Provider.of<UserContext>(context, listen: false);
-      if (userContext.connectedDevice != null) {
-        setState(() {
-          _isConnected = userContext.connectedDevice!.isConnected;
-          _deviceName = userContext.connectedDevice!.name;
-          _relationshipStatus = _isConnected ? 'Paired & Active' : 'Not paired';
-        });
-      }
-    });
-  }
-  
+  // Wristband connection data
+  bool _isConnected = true;
+  String _deviceName = 'Smart Wristband Pro';
+  String _relationshipStatus = 'Paired & Active';
+
   void _showWristbandDetails() {
     showModalBottomSheet(
       context: context,
@@ -273,14 +256,9 @@ class _HomeTabPageState extends State<_HomeTabPage> {
                             Icons.bluetooth_searching,
                             AppColors.black,
                             () {
-                              // Navigate to wristband connection screen
+                              // Navigate to pairing screen
                               Navigator.pop(context);
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const ConnectWristbandScreen(),
-                                ),
-                              );
+                              // In a real app, this would navigate to a pairing screen
                             },
                           ),
                         ],
@@ -359,37 +337,6 @@ class _HomeTabPageState extends State<_HomeTabPage> {
 
   @override
   Widget build(BuildContext context) {
-    final userContext = Provider.of<UserContext>(context);
-    final user = userContext.user;
-    final device = userContext.connectedDevice;
-    
-    // Wristband connection data from context
-    bool isConnectedFromContext = device?.isConnected ?? false;
-    String deviceNameFromContext = device?.name ?? 'No device paired';
-    String relationshipStatusFromContext = isConnectedFromContext ? 'Paired & Active' : 'Not paired';
-    String userNameFromContext = user?.name ?? 'User';
-    
-    // Get real stats from context
-    var healthMetrics = userContext.getUserHealthMetrics();
-    int connections = healthMetrics?['connections'] ?? 12; // Default to 12 if not available
-    int onlineNow = healthMetrics?['onlineNow'] ?? 7; // Default to 7 if not available
-    String batteryLevel = healthMetrics?['battery'] ?? '87%'; // Default to 87% if not available
-    String signalStrength = healthMetrics?['signal'] ?? 'Strong'; // Default to Strong if not available
-    
-    // Get recent activities from context
-    List<Map<String, dynamic>> recentActivities = [];
-    if (healthMetrics != null) {
-      var rawActivities = healthMetrics['recentActivities'] ?? [];
-      recentActivities = rawActivities.map<Map<String, dynamic>>((activity) {
-        return {
-          'title': activity['title'],
-          'time': activity['time'],
-          'icon': _stringToIcon(activity['icon']),
-          'color': _stringToColor(activity['color']),
-        };
-      }).toList();
-    }
-    
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -413,7 +360,7 @@ class _HomeTabPageState extends State<_HomeTabPage> {
                       ),
                     ),
                     Text(
-                      userNameFromContext, // Use real user name from context
+                      'John Doe',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w500,
@@ -423,12 +370,11 @@ class _HomeTabPageState extends State<_HomeTabPage> {
                     const SizedBox(height: 16),
                     // Device status indicator below welcome text
                     GestureDetector(
-                      onTap: _deviceName != 'No device paired' ? _showWristbandDetails : null,
+                      onTap: _showWristbandDetails,
                       child: Container(
-                        width: double.infinity,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
-                          vertical: 16,
+                          vertical: 10,
                         ),
                         decoration: BoxDecoration(
                           color: AppColors.surfaceVariant,
@@ -439,92 +385,44 @@ class _HomeTabPageState extends State<_HomeTabPage> {
                           ),
                         ),
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: _isConnected
-                                        ? Colors.green.withOpacity(0.1)
-                                        : Colors.orange.withOpacity(0.1),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.watch,
-                                    size: 24,
-                                    color: _isConnected
-                                        ? Colors.green
-                                        : Colors.orange,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      _deviceName,
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.textPrimary,
-                                      ),
-                                    ),
-                                    Text(
-                                      _isConnected
-                                          ? 'Connected'
-                                          : 'Disconnected',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w400,
-                                        color: _isConnected
-                                            ? Colors.green
-                                            : Colors.orange,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            if (_deviceName != 'No device paired')
-                              Icon(
-                                Icons.keyboard_arrow_right,
-                                size: 20,
-                                color: AppColors.textSecondary,
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: _isConnected
+                                    ? Colors.green.withOpacity(0.1)
+                                    : Colors.orange.withOpacity(0.1),
+                                shape: BoxShape.circle,
                               ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Add new device button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ConnectWristbandScreen(),
+                              child: Icon(
+                                Icons.watch,
+                                size: 20,
+                                color: _isConnected
+                                    ? Colors.green
+                                    : Colors.orange,
+                              ),
                             ),
-                          );
-                        },
-                        icon: Icon(Icons.add, size: 20),
-                        label: Text(
-                          'Add a new device',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          backgroundColor: AppColors.black,
-                          foregroundColor: AppColors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                            const SizedBox(width: 10),
+                            Text(
+                              _isConnected
+                                  ? 'Wristband Connected'
+                                  : 'Wristband Disconnected',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: _isConnected
+                                    ? Colors.green
+                                    : Colors.orange,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Icon(
+                              Icons.keyboard_arrow_down,
+                              size: 16,
+                              color: AppColors.textSecondary,
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -548,18 +446,18 @@ class _HomeTabPageState extends State<_HomeTabPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildStatCard('Connections', connections.toString(), Icons.people), // Use real data
-                    _buildStatCard('Online Now', onlineNow.toString(), Icons.wifi), // Use real data
+                    _buildStatCard('Connections', '12', Icons.people),
+                    _buildStatCard('Online Now', '7', Icons.wifi),
                   ],
                 ),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildStatCard('Battery', batteryLevel, Icons.battery_full), // Use real data
+                    _buildStatCard('Battery', '87%', Icons.battery_full),
                     _buildStatCard(
                       'Signal',
-                      signalStrength, // Use real data
+                      'Strong',
                       Icons.signal_cellular_alt,
                     ),
                   ],
@@ -583,62 +481,40 @@ class _HomeTabPageState extends State<_HomeTabPage> {
           // Activity list
           Expanded(
             child: ListView(
-              children: recentActivities.map((activity) {
-                return _buildActivityCard(
-                  activity['title'],
-                  activity['time'],
-                  activity['icon'],
-                  activity['color'],
-                );
-              }).toList(),
+              children: [
+                _buildActivityCard(
+                  'SOS Alert Sent',
+                  '10:15 PM',
+                  Icons.warning,
+                  Colors.red,
+                ),
+                const SizedBox(height: 12),
+                _buildActivityCard(
+                  'New Connection',
+                  'Yesterday',
+                  Icons.person_add,
+                  Colors.green,
+                ),
+                const SizedBox(height: 12),
+                _buildActivityCard(
+                  'Wristband Paired',
+                  '2 days ago',
+                  Icons.bluetooth_connected,
+                  Colors.blue,
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
   }
-  
-  // Helper method to convert string icon names to actual icons
-  IconData _stringToIcon(String iconString) {
-    switch (iconString) {
-      case 'warning':
-        return Icons.warning;
-      case 'person_add':
-        return Icons.person_add;
-      case 'bluetooth_connected':
-        return Icons.bluetooth_connected;
-      case 'people':
-        return Icons.people;
-      case 'wifi':
-        return Icons.wifi;
-      case 'battery_full':
-        return Icons.battery_full;
-      case 'signal_cellular_alt':
-        return Icons.signal_cellular_alt;
-      default:
-        return Icons.info;
-    }
-  }
-  
-  // Helper method to convert string color names to actual colors
-  Color _stringToColor(String colorString) {
-    switch (colorString) {
-      case 'red':
-        return Colors.red;
-      case 'green':
-        return Colors.green;
-      case 'blue':
-        return Colors.blue;
-      case 'orange':
-        return Colors.orange;
-      default:
-        return Colors.grey;
-    }
-  }
-    
+
   Widget _buildStatCard(String title, String value, IconData icon) {
     return Container(
-      width: 120, // Fixed width instead of using context
+      width:
+          MediaQuery.of(context).size.width * 0.4 -
+          20, // Half of 40% width minus padding
       child: Column(
         children: [
           Icon(icon, size: 24, color: AppColors.black),
@@ -728,62 +604,39 @@ class _MessagesTabPage extends StatefulWidget {
 }
 
 class _MessagesTabPageState extends State<_MessagesTabPage> {
-  List<Map<String, dynamic>> getChats(BuildContext context) {
-    final userContext = Provider.of<UserContext>(context, listen: false);
-    
-    // Get chats from context
-    List<Map<String, dynamic>> _chats = userContext.getEmergencyContacts().map((contact) {
-      return {
-        'id': contact['name'].hashCode, // Generate a unique ID
-        'name': contact['name'],
-        'avatar': Icons.person,
-        'lastMessage': 'Last contacted: ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}',
-        'time': 'Just now',
-        'unreadCount': 0,
-        'isOnline': true, // Assuming all emergency contacts are potentially available
-      };
-    }).toList();
-    
-    // Fallback to sample data if no contacts
-    if (_chats.isEmpty) {
-      _chats = [
-        {
-          'id': 1,
-          'name': 'Sarah Johnson',
-          'avatar': Icons.person,
-          'lastMessage': 'Hey, are you coming to the event tonight?',
-          'time': '2:30 PM',
-          'unreadCount': 2,
-          'isOnline': true,
-        },
-        {
-          'id': 2,
-          'name': 'Michael Chen',
-          'avatar': Icons.person,
-          'lastMessage': 'Thanks for sharing the document!',
-          'time': '11:45 AM',
-          'unreadCount': 0,
-          'isOnline': false,
-        },
-        {
-          'id': 3,
-          'name': 'Emma Wilson',
-          'avatar': Icons.person,
-          'lastMessage': 'See you tomorrow at 3pm',
-          'time': 'Yesterday',
-          'unreadCount': 1,
-          'isOnline': true,
-        },
-      ];
-    }
-    
-    return _chats;
-  }
-  
+  // Sample chat data
+  final List<Map<String, dynamic>> _chats = [
+    {
+      'id': 1,
+      'name': 'Sarah Johnson',
+      'avatar': Icons.person,
+      'lastMessage': 'Hey, are you coming to the event tonight?',
+      'time': '2:30 PM',
+      'unreadCount': 2,
+      'isOnline': true,
+    },
+    {
+      'id': 2,
+      'name': 'Michael Chen',
+      'avatar': Icons.person,
+      'lastMessage': 'Thanks for sharing the document!',
+      'time': '11:45 AM',
+      'unreadCount': 0,
+      'isOnline': false,
+    },
+    {
+      'id': 3,
+      'name': 'Emma Wilson',
+      'avatar': Icons.person,
+      'lastMessage': 'See you tomorrow at 3pm',
+      'time': 'Yesterday',
+      'unreadCount': 1,
+      'isOnline': true,
+    },
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final _chats = getChats(context);
-    
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -1500,13 +1353,6 @@ class _ProfileTabContentState extends State<_ProfileTabContent> {
 
   @override
   Widget build(BuildContext context) {
-    final userContext = Provider.of<UserContext>(context);
-    final user = userContext.user;
-    
-    // Get user data from context
-    String _userName = user?.name ?? 'User';
-    String _userEmail = user?.email ?? 'user@example.com';
-    
     return Column(
       children: [
         // Profile header section (sticky)
@@ -1551,7 +1397,7 @@ class _ProfileTabContentState extends State<_ProfileTabContent> {
               const SizedBox(height: 16),
               // Display name
               Text(
-                _userName, // Use real user name from context
+                'John Doe',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
@@ -1561,7 +1407,7 @@ class _ProfileTabContentState extends State<_ProfileTabContent> {
               const SizedBox(height: 4),
               // Email
               Text(
-                _userEmail, // Use real user email from context
+                'john.doe@example.com',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,

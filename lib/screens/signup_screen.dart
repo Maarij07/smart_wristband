@@ -1,9 +1,12 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../services/user_context.dart';
 import '../utils/colors.dart';
 import '../services/firebase_service.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
+import 'connect_wristband_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -18,6 +21,7 @@ class _SignUpScreenState extends State<SignUpScreen>
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _relationshipStatusController = TextEditingController();
   
   bool _agreeToTerms = false;
   bool _obscurePassword = true;
@@ -62,6 +66,7 @@ class _SignUpScreenState extends State<SignUpScreen>
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _relationshipStatusController.dispose();
     super.dispose();
   }
 
@@ -108,7 +113,33 @@ class _SignUpScreenState extends State<SignUpScreen>
           uid: user.uid,
           email: user.email!,
           name: _nameController.text.trim(),
+          relationshipStatus: _relationshipStatusController.text.trim().isEmpty ? 'Single' : _relationshipStatusController.text.trim(),
+          privacySettings: {
+            'profileAccess': 'anyone',
+            'locationAccess': 'friends_only',
+            'photoAccess': 'friends_only',
+          },
         );
+        
+        // Save user to context
+        final userContext = Provider.of<UserContext>(context, listen: false);
+        userContext.setUser(User(
+          id: user.uid,
+          email: user.email!,
+          name: _nameController.text.trim(),
+          phoneNumber: null,
+          profilePicture: null,
+          bio: null,
+          relationshipStatus: _relationshipStatusController.text.trim().isEmpty ? 'Single' : _relationshipStatusController.text.trim(),
+          socialMediaLinks: null,
+          privacySettings: {
+            'profileAccess': 'anyone',
+            'locationAccess': 'friends_only',
+            'photoAccess': 'friends_only',
+          },
+          createdAt: DateTime.now(),
+          lastLoginAt: DateTime.now(),
+        ));
         
         // Clear any existing login status
         await AuthService.logout();
@@ -123,8 +154,8 @@ class _SignUpScreenState extends State<SignUpScreen>
           ),
         );
         
-        // Navigate to home screen
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen()));
+        // Navigate to wristband connection screen
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => ConnectWristbandScreen()));
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -245,6 +276,14 @@ class _SignUpScreenState extends State<SignUpScreen>
                           });
                         },
                       ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Relationship Status Field
+                    _buildMinimalTextField(
+                      controller: _relationshipStatusController,
+                      label: 'Relationship Status',
+                      hint: 'Single',
                     ),
                     const SizedBox(height: 24),
 

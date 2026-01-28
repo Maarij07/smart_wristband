@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../utils/colors.dart';
 import '../services/permission_service.dart';
 import 'signin_screen.dart';
@@ -25,11 +24,13 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
   void _checkInitialPermissions() async {
     final locationGranted = await PermissionService.isLocationPermissionGranted();
     final notificationGranted = await PermissionService.isNotificationPermissionGranted();
+    final bluetoothGranted = await PermissionService.isBluetoothPermissionGranted();
     
     setState(() {
-      _allPermissionsGranted = locationGranted && notificationGranted;
+      _allPermissionsGranted = locationGranted && notificationGranted && bluetoothGranted;
       _permissionResults['location'] = locationGranted;
       _permissionResults['notification'] = notificationGranted;
+      _permissionResults['bluetooth'] = bluetoothGranted;
     });
     
     if (_allPermissionsGranted) {
@@ -60,9 +61,18 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
         });
       }
       
+      // Request bluetooth permission if not granted
+      if (!(_permissionResults['bluetooth'] ?? false)) {
+        final bluetoothResult = await PermissionService.requestBluetoothPermission();
+        setState(() {
+          _permissionResults['bluetooth'] = bluetoothResult;
+        });
+      }
+      
       setState(() {
         _allPermissionsGranted = (_permissionResults['location'] ?? false) && 
-                                (_permissionResults['notification'] ?? false);
+                                (_permissionResults['notification'] ?? false) &&
+                                (_permissionResults['bluetooth'] ?? false);
         _isProcessing = false;
       });
 
@@ -104,7 +114,7 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
   }
 
   void _openAppSettings() {
-    PermissionService.openAppSettings();
+    PermissionService.openAppSettingsDialog();
   }
 
   @override
@@ -180,6 +190,13 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
               ),
               const SizedBox(height: 16),
 
+              _buildPermissionItem(
+                Icons.bluetooth,
+                'Bluetooth',
+                'To connect and communicate with your Smart Wristband',
+                _permissionResults['bluetooth'] ?? false,
+              ),
+              const SizedBox(height: 16),
 
               const SizedBox(height: 40),
 
