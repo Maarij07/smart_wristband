@@ -470,8 +470,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
                   platform.toLowerCase(): value.isNotEmpty ? value : null,
                 }..removeWhere((key, value) => value == null);
                 
+                // Cast to Map<String, String> by filtering out null values
+                final cleanLinks = updatedLinks.map((key, value) => MapEntry(key, value.toString()));
+                
                 await userContext.updateUserProfile(
-                  socialMediaLinks: updatedLinks.isEmpty ? null : updatedLinks,
+                  socialMediaLinks: cleanLinks.isEmpty ? null : cleanLinks,
                 );
               }
             },

@@ -5,7 +5,7 @@ import 'package:location/location.dart';
 import 'package:provider/provider.dart';
 import '../utils/colors.dart';
 import '../services/user_context.dart';
-import 'chat_screen.dart';
+
 import 'sos_alert_screen.dart';
 import 'signin_screen.dart';
 import 'connect_wristband_screen.dart';
@@ -720,70 +720,11 @@ class _HomeTabPageState extends State<_HomeTabPage> {
   }
 }
 
-class _MessagesTabPage extends StatefulWidget {
+class _MessagesTabPage extends StatelessWidget {
   const _MessagesTabPage({super.key});
 
   @override
-  State<_MessagesTabPage> createState() => _MessagesTabPageState();
-}
-
-class _MessagesTabPageState extends State<_MessagesTabPage> {
-  List<Map<String, dynamic>> getChats(BuildContext context) {
-    final userContext = Provider.of<UserContext>(context, listen: false);
-    
-    // Get chats from context
-    List<Map<String, dynamic>> _chats = userContext.getEmergencyContacts().map((contact) {
-      return {
-        'id': contact['name'].hashCode, // Generate a unique ID
-        'name': contact['name'],
-        'avatar': Icons.person,
-        'lastMessage': 'Last contacted: ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}',
-        'time': 'Just now',
-        'unreadCount': 0,
-        'isOnline': true, // Assuming all emergency contacts are potentially available
-      };
-    }).toList();
-    
-    // Fallback to sample data if no contacts
-    if (_chats.isEmpty) {
-      _chats = [
-        {
-          'id': 1,
-          'name': 'Sarah Johnson',
-          'avatar': Icons.person,
-          'lastMessage': 'Hey, are you coming to the event tonight?',
-          'time': '2:30 PM',
-          'unreadCount': 2,
-          'isOnline': true,
-        },
-        {
-          'id': 2,
-          'name': 'Michael Chen',
-          'avatar': Icons.person,
-          'lastMessage': 'Thanks for sharing the document!',
-          'time': '11:45 AM',
-          'unreadCount': 0,
-          'isOnline': false,
-        },
-        {
-          'id': 3,
-          'name': 'Emma Wilson',
-          'avatar': Icons.person,
-          'lastMessage': 'See you tomorrow at 3pm',
-          'time': 'Yesterday',
-          'unreadCount': 1,
-          'isOnline': true,
-        },
-      ];
-    }
-    
-    return _chats;
-  }
-  
-  @override
   Widget build(BuildContext context) {
-    final _chats = getChats(context);
-    
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -799,115 +740,34 @@ class _MessagesTabPageState extends State<_MessagesTabPage> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: ListView.builder(
-              itemCount: _chats.length,
-              itemBuilder: (context, index) {
-                final chat = _chats[index];
-                return Card(
-                  color: AppColors.surfaceVariant,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    leading: Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 28,
-                          backgroundColor: AppColors.surface,
-                          child: Icon(
-                            chat['avatar'],
-                            color: AppColors.black,
-                            size: 20,
-                          ),
-                        ),
-                        if (chat['isOnline'])
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: Container(
-                              width: 16,
-                              height: 16,
-                              decoration: BoxDecoration(
-                                color: Colors.green,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: AppColors.surface,
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    title: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          chat['name'],
-                          style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        Text(
-                          chat['time'],
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    subtitle: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            chat['lastMessage'],
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ),
-                        if (chat['unreadCount'] > 0)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.black,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              chat['unreadCount'].toString(),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ChatScreen(
-                            chatId: chat['id'],
-                            chatName: chat['name'],
-                            isOnline: chat['isOnline'],
-                          ),
-                        ),
-                      );
-                    },
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.message_outlined,
+                    size: 64,
+                    color: AppColors.textSecondary,
                   ),
-                );
-              },
+                  const SizedBox(height: 16),
+                  Text(
+                    'No messages yet',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Your conversations will appear here',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
           ),
         ],

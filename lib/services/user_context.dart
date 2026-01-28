@@ -169,18 +169,7 @@ class UserContext extends ChangeNotifier {
     };
   }
 
-  // Get emergency contacts from user context
-  List<Map<String, dynamic>> getEmergencyContacts() {
-    // This would typically come from user's profile in Firestore
-    if (_user != null) {
-      // Placeholder for actual emergency contacts
-      return [
-        {'name': 'John Doe', 'phone': '+1234567890', 'relationship': 'Brother'},
-        {'name': 'Jane Smith', 'phone': '+0987654321', 'relationship': 'Sister'},
-      ];
-    }
-    return [];
-  }
+
 
   // Get SOS PIN from user context
   String? getSosPin() {
