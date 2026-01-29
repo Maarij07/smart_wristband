@@ -15,6 +15,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
   late TabController _tabController;
   final TextEditingController _bioController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _relationshipStatusController = TextEditingController();
   final TextEditingController _instagramController = TextEditingController();
   final TextEditingController _twitterController = TextEditingController();
   final TextEditingController _linkedinController = TextEditingController();
@@ -29,6 +30,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
   void dispose() {
     _bioController.dispose();
     _phoneController.dispose();
+    _relationshipStatusController.dispose();
     _instagramController.dispose();
     _twitterController.dispose();
     _linkedinController.dispose();
@@ -196,7 +198,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
           const SizedBox(height: 16),
           
           // Relationship Status
-          _buildProfileField('Relationship Status', user.relationshipStatus ?? 'Single'),
+          _buildRelationshipStatusField(user.relationshipStatus ?? 'Single'),
           const SizedBox(height: 16),
           
           // Bio field with character counter
@@ -320,6 +322,180 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildProfileField(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: AppColors.divider, width: 1),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRelationshipStatusField(String currentStatus) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: AppColors.divider, width: 1),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: Text(
+              'Relationship Status',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    currentStatus,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.edit, size: 18, color: AppColors.textSecondary),
+                  onPressed: () {
+                    _showRelationshipStatusDialog(currentStatus);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRelationshipStatusDialog(String currentStatus) {
+    String selectedStatus = currentStatus;
+    
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text('Edit Relationship Status'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  RadioListTile<String>(
+                    title: Text('Single'),
+                    subtitle: Text('Sets the wristband light to steady Green'),
+                    value: 'Single',
+                    groupValue: selectedStatus,
+                    onChanged: (value) {
+                      setDialogState(() {
+                        selectedStatus = value!;
+                      });
+                    },
+                  ),
+                  RadioListTile<String>(
+                    title: Text('In a relationship'),
+                    subtitle: Text('Sets the wristband light to steady Red'),
+                    value: 'In a relationship',
+                    groupValue: selectedStatus,
+                    onChanged: (value) {
+                      setDialogState(() {
+                        selectedStatus = value!;
+                      });
+                    },
+                  ),
+                  RadioListTile<String>(
+                    title: Text('Complicated'),
+                    subtitle: Text('Sets the wristband light to steady Yellow'),
+                    value: 'Complicated',
+                    groupValue: selectedStatus,
+                    onChanged: (value) {
+                      setDialogState(() {
+                        selectedStatus = value!;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    // Update relationship status in context and Firebase
+                    final userContext = Provider.of<UserContext>(context, listen: false);
+                    await userContext.updateUserProfile(
+                      relationshipStatus: selectedStatus,
+                    );
+                    
+                    // Send the appropriate command to the wristband based on the selected status
+                    switch (selectedStatus) {
+                      case 'Single':
+                        await userContext.setWristbandToSingle();
+                        break;
+                      case 'In a relationship':
+                        await userContext.setWristbandToTaken();
+                        break;
+                      case 'Complicated':
+                        await userContext.setWristbandToComplicated();
+                        break;
+                      default:
+                        // For any other status, default to Single
+                        await userContext.setWristbandToSingle();
+                        break;
+                    }
+                    
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -568,38 +744,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
         children: [
           Text(type, style: TextStyle(fontSize: 16, color: AppColors.textSecondary)),
           Text(count, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProfileField(String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: AppColors.divider, width: 1),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w400,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
-            ),
-          ),
         ],
       ),
     );

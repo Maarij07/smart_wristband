@@ -3,6 +3,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:location/location.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'dart:async';
 import '../utils/colors.dart';
 import '../services/user_context.dart';
 
@@ -102,6 +104,12 @@ class _HomeTabPageState extends State<_HomeTabPage> {
   String _deviceName = 'No device paired';
   String _relationshipStatus = 'Not paired';
   
+  // BLE subscription for incoming data
+  StreamSubscription<BluetoothConnectionState>? _connectionSubscription;
+  StreamSubscription<List<int>>? _dataSubscription;
+  StreamSubscription<int>? _periodicSubscription;
+  BluetoothCharacteristic? _incomingDataCharacteristic;
+  
   @override
   void initState() {
     super.initState();
@@ -114,8 +122,140 @@ class _HomeTabPageState extends State<_HomeTabPage> {
           _deviceName = userContext.connectedDevice!.name;
           _relationshipStatus = _isConnected ? 'Paired & Active' : 'Not paired';
         });
+        
+        // Set up BLE listener for incoming signals from wristband
+        _setupBleListener(userContext.connectedDevice!.id);
       }
     });
+  }
+  
+  void _setupBleListener(String deviceId) async {
+    try {
+      BluetoothDevice device = BluetoothDevice.fromId(deviceId);
+      
+      // Discover services
+      List<BluetoothService> services = await device.discoverServices();
+      
+      // Look for the service that handles incoming data from the wristband
+      BluetoothService? wristbandService = services.firstWhere(
+        (service) => service.uuid.toString().toLowerCase().contains('fff0') || 
+                       service.uuid.toString().toLowerCase().contains('custom') ||
+                       service.uuid.toString().toLowerCase().contains('wristband'),
+        orElse: () => services.first, // fallback to first service if none found
+      );
+      
+      // Find the characteristic that receives data from the wristband
+      _incomingDataCharacteristic = wristbandService.characteristics
+          .firstWhere(
+        (char) => char.properties.read || char.properties.notify,
+        orElse: () => wristbandService.characteristics.firstWhere(
+          (char) => char.properties.write,
+          orElse: () => wristbandService.characteristics.first,
+        ),
+      );
+      
+      // Subscribe to notifications from the wristband
+      if (_incomingDataCharacteristic!.properties.notify) {
+        await _incomingDataCharacteristic!.setNotifyValue(true);
+        _dataSubscription = _incomingDataCharacteristic!.lastValueStream.listen((data) {
+          _handleIncomingSignal(data);
+        });
+      } else {
+        // If notifications aren't available, periodically read the characteristic
+        Stream.periodic(const Duration(seconds: 1)).listen((_) async {
+          try {
+            List<int> data = await _incomingDataCharacteristic!.read();
+            _handleIncomingSignal(data);
+          } catch (e) {
+            print('Error reading characteristic: $e');
+          }
+        });
+      }
+      
+      // Listen for connection state changes
+      _connectionSubscription = device.connectionState.listen((state) {
+        setState(() {
+          _isConnected = state == BluetoothConnectionState.connected;
+          _relationshipStatus = _isConnected ? 'Paired & Active' : 'Disconnected';
+        });
+      });
+      
+    } catch (e) {
+      print('Error setting up BLE listener: $e');
+    }
+  }
+  
+  void _handleIncomingSignal(List<int> data) {
+    // Convert bytes to string
+    String signal = String.fromCharCodes(data);
+    print('Received signal from wristband: $signal');
+    
+    // Process the incoming signal according to the protocol
+    if (signal.startsWith('L')) {
+      // Battery level signal (e.g., L87)
+      String batteryLevel = signal.substring(1); // Remove 'L' prefix
+      print('Battery level: ${batteryLevel}%');
+      
+      // Update user context with battery information
+      final userContext = Provider.of<UserContext>(context, listen: false);
+      // This would update the health metrics in the context
+    } else if (signal.startsWith('R')) {
+      // Status report signal (e.g., RS)
+      String status = signal.substring(1); // Remove 'R' prefix
+      print('Status report: $status');
+      
+      // Update status in UI
+      setState(() {
+        _relationshipStatus = status;
+      });
+    } else {
+      // Process single character signals
+      switch (signal) {
+        case 'X': // SOS ALERT
+          _handleSosAlert();
+          break;
+        case 'B': // Button Press
+          _handleButtonPress();
+          break;
+        case 'O': // Power On
+          print('Wristband powered on');
+          setState(() {
+            _relationshipStatus = 'Powered on';
+          });
+          break;
+        case 'Z': // Power Off
+          print('Wristband powered off');
+          setState(() {
+            _relationshipStatus = 'Powered off';
+          });
+          break;
+        default:
+          print('Unknown signal: $signal');
+          break;
+      }
+    }
+  }
+  
+  void _handleSosAlert() {
+    print('SOS ALERT received from wristband!');
+    // Trigger emergency response
+    // Navigate to emergency SOS screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const SosAlertScreen()),
+    );
+    
+    // Send confirmation back to wristband
+    final userContext = Provider.of<UserContext>(context, listen: false);
+    userContext.confirmWristbandSos();
+  }
+  
+  void _handleButtonPress() {
+    print('Button press detected on wristband');
+    // Handle button press event
+    // Could trigger haptic feedback or update status
+    final userContext = Provider.of<UserContext>(context, listen: false);
+    userContext.triggerWristbandHaptic();
   }
   
   void _showWristbandDetails() {
@@ -356,7 +496,7 @@ class _HomeTabPageState extends State<_HomeTabPage> {
       ),
     );
   }
-
+    
   @override
   Widget build(BuildContext context) {
     final userContext = Provider.of<UserContext>(context);
@@ -712,6 +852,21 @@ class _HomeTabPageState extends State<_HomeTabPage> {
         ],
       ),
     );
+  }
+  
+  @override
+  void dispose() {
+    // Cancel all subscriptions
+    _connectionSubscription?.cancel();
+    _dataSubscription?.cancel();
+    _periodicSubscription?.cancel();
+    
+    // If we were listening for notifications, turn them off
+    if (_incomingDataCharacteristic != null && _incomingDataCharacteristic!.properties.notify) {
+      _incomingDataCharacteristic!.setNotifyValue(false);
+    }
+    
+    super.dispose();
   }
 }
 

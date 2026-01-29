@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'firebase_service.dart';
+import 'dart:convert';
 
 class User {
   final String id;
@@ -212,6 +214,123 @@ class UserContext extends ChangeNotifier {
         socialMediaLinks: socialMediaLinks,
         privacySettings: privacySettings,
       );
+
+      // If relationship status changed, send appropriate command to wristband
+      if (relationshipStatus != null && _connectedDevice != null) {
+        await _sendRelationshipStatusCommand(relationshipStatus);
+      }
     }
+  }
+
+  // Send appropriate command to wristband based on relationship status
+  Future<void> _sendRelationshipStatusCommand(String status) async {
+    switch (status.toLowerCase()) {
+      case 'single':
+        await setWristbandToSingle();
+        break;
+      case 'in a relationship':
+        await setWristbandToTaken();
+        break;
+      case 'complicated':
+        await setWristbandToComplicated();
+        break;
+      case 'married':
+        await setWristbandToTaken(); // Treat married as taken
+        break;
+      case 'divorced':
+      case 'widowed':
+      default:
+        await setWristbandToPrivate(); // Default to private
+        break;
+    }
+  }
+
+  // Method to send command to wristband
+  Future<void> sendCommandToWristband(String command) async {
+    if (_connectedDevice != null) {
+      try {
+        // Get the connected device from FlutterBluePlus
+        BluetoothDevice device = BluetoothDevice.fromId(_connectedDevice!.id);
+        
+        // Find the service and characteristic for communication
+        // This assumes there's a specific service UUID for wristband communication
+        List<BluetoothService> services = await device.discoverServices();
+        
+        // Look for a service that handles commands
+        // Using a common UUID pattern for demonstration
+        BluetoothService? wristbandService = services.firstWhere(
+          (service) => service.uuid.toString().toLowerCase().contains('fff0') || 
+                         service.uuid.toString().toLowerCase().contains('custom') ||
+                         service.uuid.toString().toLowerCase().contains('wristband'),
+          orElse: () => services.first, // fallback to first service if none found
+        );
+        
+        // Find the characteristic for writing commands
+        BluetoothCharacteristic? commandCharacteristic = wristbandService.characteristics
+            .firstWhere(
+          (char) => char.properties.write || char.properties.writeWithoutResponse,
+          orElse: () => wristbandService.characteristics.firstWhere(
+            (char) => char.properties.notify || char.properties.read,
+            orElse: () => wristbandService.characteristics.first,
+          ),
+        );
+        
+        // Convert the command string to bytes and send
+        List<int> commandBytes = utf8.encode(command);
+        await commandCharacteristic.write(commandBytes, withoutResponse: false);
+        
+        print('Command "$command" sent to wristband successfully');
+      } catch (e) {
+        print('Error sending command to wristband: $e');
+        // Handle error appropriately
+      }
+    } else {
+      print('No wristband connected');
+    }
+  }
+
+  // Specific command methods for different statuses
+  Future<void> setWristbandToSingle() async {
+    await sendCommandToWristband('S'); // Set Single - Green light
+  }
+
+  Future<void> setWristbandToTaken() async {
+    await sendCommandToWristband('T'); // Set Taken - Red light
+  }
+
+  Future<void> setWristbandToComplicated() async {
+    await sendCommandToWristband('C'); // Set Complicated - Yellow light
+  }
+
+  Future<void> setWristbandToPrivate() async {
+    await sendCommandToWristband('P'); // Set Private - Light off
+  }
+
+  Future<void> triggerWristbandFlash() async {
+    await sendCommandToWristband('F'); // Flash notification
+  }
+
+  Future<void> triggerWristbandHaptic() async {
+    await sendCommandToWristband('H'); // Haptic vibration
+  }
+
+  Future<void> triggerWristbandAudio() async {
+    await sendCommandToWristband('A'); // Audio notification
+  }
+
+  Future<void> startWristbandFindMe() async {
+    await sendCommandToWristband('?'); // Find Me alarm
+  }
+
+  Future<void> stopWristbandFindMe() async {
+    await sendCommandToWristband('!'); // Stop Find Me
+  }
+
+  Future<void> confirmWristbandSos() async {
+    await sendCommandToWristband('K'); // SOS OK confirmation
+  }
+
+  Future<void> queryWristbandStatus() async {
+    await sendCommandToWristband('Q'); // Query status
   }
 }
