@@ -119,7 +119,7 @@ class FirebaseService {
       });
     } catch (e) {
       // Update user error
-      print('Error updating user profile: $e');
+      // Error updating user profile: \$e
     }
   }
 }

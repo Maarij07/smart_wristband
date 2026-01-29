@@ -9,7 +9,7 @@ class FirebaseConfig {
       // Try to load environment variables
       await dotenv.load(fileName: ".env");
     } catch (e) {
-      print('Could not load .env file: $e');
+      // Could not load .env file: \$e
       // Continue anyway, as we'll use fallback values
     }
 
@@ -24,7 +24,7 @@ class FirebaseConfig {
 
     // Check if we have the required values
     if (apiKey.isEmpty || appId.isEmpty || authDomain.isEmpty || projectId.isEmpty) {
-      print('Missing Firebase configuration values. Please check your .env file.');
+      // Missing Firebase configuration values. Please check your .env file.
       // Initialize with default config
       await Firebase.initializeApp();
     } else {

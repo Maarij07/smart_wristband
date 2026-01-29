@@ -29,7 +29,7 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
       await _player.setVolume(1.0);
       await _player.play();
     } catch (e) {
-      print('Audio error: $e');
+      // Audio error: \$e
     }
   }
 
@@ -41,7 +41,9 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
   @override
   void dispose() {
     _stopAlarm();
-    for (var c in _controllers) c.dispose();
+    for (var c in _controllers) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -98,7 +100,9 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
                           _stopAlarm();
                           Navigator.pop(context);
                         } else {
-                          for (var c in _controllers) c.clear();
+                          for (var c in _controllers) {
+                            c.clear();
+                          }
                           _pin = '';
                         }
                       }

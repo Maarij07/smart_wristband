@@ -1,11 +1,11 @@
-import 'package:flutter/gestures.dart';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/user_context.dart';
 import '../utils/colors.dart';
 import '../services/firebase_service.dart';
 import '../services/auth_service.dart';
-import 'home_screen.dart';
+
 import 'connect_wristband_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -121,41 +121,47 @@ class _SignUpScreenState extends State<SignUpScreen>
           },
         );
         
-        // Save user to context
-        final userContext = Provider.of<UserContext>(context, listen: false);
-        userContext.setUser(User(
-          id: user.uid,
-          email: user.email!,
-          name: _nameController.text.trim(),
-          phoneNumber: null,
-          profilePicture: null,
-          bio: null,
-          relationshipStatus: _relationshipStatusController.text.trim().isEmpty ? 'Single' : _relationshipStatusController.text.trim(),
-          socialMediaLinks: null,
-          privacySettings: {
-            'profileAccess': 'anyone',
-            'locationAccess': 'friends_only',
-            'photoAccess': 'friends_only',
-          },
-          createdAt: DateTime.now(),
-          lastLoginAt: DateTime.now(),
-        ));
-        
-        // Clear any existing login status
-        await AuthService.logout();
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Account created successfully!',
-              style: TextStyle(color: AppColors.white),
-            ),
-            backgroundColor: AppColors.black,
-          ),
-        );
-        
-        // Navigate to wristband connection screen
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => ConnectWristbandScreen()));
+        if (mounted) {
+          // Save user to context
+          final userContext = Provider.of<UserContext>(context, listen: false);
+          userContext.setUser(User(
+            id: user.uid,
+            email: user.email!,
+            name: _nameController.text.trim(),
+            phoneNumber: null,
+            profilePicture: null,
+            bio: null,
+            relationshipStatus: _relationshipStatusController.text.trim().isEmpty ? 'Single' : _relationshipStatusController.text.trim(),
+            socialMediaLinks: null,
+            privacySettings: {
+              'profileAccess': 'anyone',
+              'locationAccess': 'friends_only',
+              'photoAccess': 'friends_only',
+            },
+            createdAt: DateTime.now(),
+            lastLoginAt: DateTime.now(),
+          ));
+                  
+          // Clear any existing login status
+          await AuthService.logout();
+                    
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Account created successfully!',
+                  style: TextStyle(color: AppColors.white),
+                ),
+                backgroundColor: AppColors.black,
+              ),
+            );
+          }
+                    
+          // Navigate to wristband connection screen
+          if (mounted) {
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => ConnectWristbandScreen()));
+          }
+        }
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

@@ -30,9 +30,9 @@ class SOSAudioManager {
       await _player!.play();
       _isPlaying = true;
       
-      print('✅ SOS alarm started successfully with just_audio');
+      // ✅ SOS alarm started successfully with just_audio
     } catch (e) {
-      print('❌ SOS audio error: $e');
+      // ❌ SOS audio error: \$e
       // Fallback to system sound if available
       _playSystemFallback();
     }
@@ -40,7 +40,7 @@ class SOSAudioManager {
 
   void _playSystemFallback() {
     // This would be implemented with platform channels if needed
-    print('⚠️ Using system fallback for SOS alarm');
+    // ⚠️ Using system fallback for SOS alarm
   }
 
   Future<void> stopAlarm() async {
@@ -49,7 +49,7 @@ class SOSAudioManager {
       await _player?.dispose();
       _player = null;
       _isPlaying = false;
-      print('✅ SOS alarm stopped');
+      // ✅ SOS alarm stopped
     }
   }
 

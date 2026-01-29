@@ -85,7 +85,11 @@ class _ConnectWristbandScreenState extends State<ConnectWristbandScreen>
       if (e.toString().contains('Bluetooth must be turned on')) {
         _showBluetoothDisabledDialog();
       } else {
-        print("Error starting scan: $e");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Error starting scan: ${e.toString()}")),
+          );
+        }
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text("Failed to start scan: $e")),
@@ -186,24 +190,22 @@ class _ConnectWristbandScreenState extends State<ConnectWristbandScreen>
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () async {
-                          Navigator.pop(context);
+                          Navigator.of(context).pop(); // Close the dialog
+                          
                           try {
                             // Attempt to enable Bluetooth
                             await FlutterBluePlus.turnOn();
                             // Brief delay to allow Bluetooth to initialize
                             await Future.delayed(const Duration(milliseconds: 1000));
-                            // Auto-start scanning
-                            startScan();
-                          } catch (e) {
-                            // If we can't programmatically enable it, show snackbar with instructions
+                            
+                            // Start scanning in the parent widget
                             if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Please manually enable Bluetooth in your device settings'),
-                                  duration: Duration(seconds: 3),
-                                ),
-                              );
+                              startScan();
                             }
+                          } catch (e) {
+                            // If we can't programmatically enable it, inform the user
+                            // Note: We can't show a snackbar here since the dialog has been popped
+                            // The parent widget should handle any necessary error display
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -238,7 +240,7 @@ class _ConnectWristbandScreenState extends State<ConnectWristbandScreen>
     try {
       await FlutterBluePlus.stopScan();
     } catch (e) {
-      print("Error stopping scan: $e");
+      // Error stopping scan: \$e
     }
   }
 
@@ -289,13 +291,15 @@ class _ConnectWristbandScreenState extends State<ConnectWristbandScreen>
         // Wait a bit to show success message, then navigate
         await Future.delayed(Duration(seconds: 2));
         
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-        );
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
+        }
       }
     } catch (e) {
-      print("Error connecting to device: $e");
+      // Error connecting to device: \$e
       
       // Show detailed error message
       String errorMessage = "Failed to connect";

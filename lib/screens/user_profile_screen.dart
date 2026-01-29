@@ -299,8 +299,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
                                   ),
                                   TextButton(
                                     onPressed: () async {
+                                      // Store navigator before the async operation
+                                      final navigator = Navigator.of(context);
                                       await onSave(controller.text);
-                                      Navigator.of(context).pop();
+                                      // Pop the dialog after saving
+                                      if (mounted) {
+                                        navigator.pop();
+                                      }
                                     },
                                     child: Text('Save'),
                                   ),
@@ -455,12 +460,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> with TickerProvid
             onChanged: (value) async {
               if (value.isNotEmpty && !RegExp(regex).hasMatch(value)) {
                 // Show error if URL doesn't match the expected pattern
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Invalid $platform URL format'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Invalid $platform URL format'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               } else {
                 // Update social media links in both context and Firebase
                 final userContext = Provider.of<UserContext>(context, listen: false);

@@ -10,7 +10,7 @@ class AuthService {
       await prefs.setBool(_rememberMeKey, value);
     } catch (e) {
       // Log the error or handle it appropriately
-      print('Error saving remember me: \$e');
+      // Error saving remember me: \$e
     }
   }
 
@@ -19,7 +19,7 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getBool(_rememberMeKey) ?? false;
     } catch (e) {
-      print('Error getting remember me: \$e');
+      // Error getting remember me: \$e
       return false; // Default to false if there's an error
     }
   }
@@ -29,7 +29,7 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_isLoggedInKey, isLoggedIn);
     } catch (e) {
-      print('Error saving login status: \$e');
+      // Error saving login status: \$e
     }
   }
 
@@ -38,7 +38,7 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getBool(_isLoggedInKey) ?? false;
     } catch (e) {
-      print('Error getting login status: \$e');
+      // Error getting login status: \$e
       return false; // Default to false if there's an error
     }
   }
@@ -49,7 +49,7 @@ class AuthService {
       final isLoggedIn = await getLoginStatus();
       return rememberMe && isLoggedIn;
     } catch (e) {
-      print('Error checking auto login: \$e');
+      // Error checking auto login: \$e
       return false; // Default to false if there's an error
     }
   }
@@ -59,7 +59,7 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_isLoggedInKey, false);
     } catch (e) {
-      print('Error logging out: \$e');
+      // Error logging out: \$e
     }
   }
 }

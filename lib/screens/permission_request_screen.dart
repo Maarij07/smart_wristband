@@ -13,7 +13,7 @@ class PermissionRequestScreen extends StatefulWidget {
 class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
   bool _isProcessing = false;
   bool _allPermissionsGranted = false;
-  Map<String, bool> _permissionResults = {};
+  final Map<String, bool> _permissionResults = {};
 
   @override
   void initState() {
@@ -111,10 +111,6 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
         );
       },
     );
-  }
-
-  void _openAppSettings() {
-    PermissionService.openAppSettingsDialog();
   }
 
   @override
@@ -255,7 +251,7 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
         color: AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isGranted ? Colors.green.withOpacity(0.3) : AppColors.divider,
+          color: isGranted ? Colors.green.withValues(alpha: 0.3) : AppColors.divider,
           width: 1,
         ),
       ),
@@ -265,7 +261,7 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: isGranted ? Colors.green.withOpacity(0.1) : AppColors.surface,
+              color: isGranted ? Colors.green.withValues(alpha: 0.1) : AppColors.surface,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: isGranted ? Colors.green : AppColors.divider,

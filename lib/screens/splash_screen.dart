@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../utils/colors.dart';
 import 'signin_screen.dart';
 import 'home_screen.dart';
-import 'onboarding_screen.dart';
+
 import 'permission_request_screen.dart';
 import '../services/auth_service.dart';
 import '../services/permission_service.dart';

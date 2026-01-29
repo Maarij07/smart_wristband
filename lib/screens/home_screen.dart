@@ -90,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _HomeTabPage extends StatefulWidget {
-  const _HomeTabPage({super.key});
+  const _HomeTabPage();
 
   @override
   State<_HomeTabPage> createState() => _HomeTabPageState();
@@ -361,12 +361,7 @@ class _HomeTabPageState extends State<_HomeTabPage> {
   Widget build(BuildContext context) {
     final userContext = Provider.of<UserContext>(context);
     final user = userContext.user;
-    final device = userContext.connectedDevice;
-    
     // Wristband connection data from context
-    bool isConnectedFromContext = device?.isConnected ?? false;
-    String deviceNameFromContext = device?.name ?? 'No device paired';
-    String relationshipStatusFromContext = isConnectedFromContext ? 'Paired & Active' : 'Not paired';
     String userNameFromContext = user?.name ?? 'User';
     
     // Get real stats from context
@@ -447,8 +442,8 @@ class _HomeTabPageState extends State<_HomeTabPage> {
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
                                     color: _isConnected
-                                        ? Colors.green.withOpacity(0.1)
-                                        : Colors.orange.withOpacity(0.1),
+                                        ? Colors.green.withValues(alpha: 0.1)
+                                        : Colors.orange.withValues(alpha: 0.1),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Icon(
@@ -637,7 +632,7 @@ class _HomeTabPageState extends State<_HomeTabPage> {
   }
     
   Widget _buildStatCard(String title, String value, IconData icon) {
-    return Container(
+    return SizedBox(
       width: 120, // Fixed width instead of using context
       child: Column(
         children: [
@@ -684,7 +679,7 @@ class _HomeTabPageState extends State<_HomeTabPage> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: color, size: 20),
@@ -721,7 +716,7 @@ class _HomeTabPageState extends State<_HomeTabPage> {
 }
 
 class _MessagesTabPage extends StatelessWidget {
-  const _MessagesTabPage({super.key});
+  const _MessagesTabPage();
 
   @override
   Widget build(BuildContext context) {
@@ -777,7 +772,7 @@ class _MessagesTabPage extends StatelessWidget {
 }
 
 class _MapsTabPage extends StatefulWidget {
-  const _MapsTabPage({super.key});
+  const _MapsTabPage();
 
   @override
   State<_MapsTabPage> createState() => _MapsTabPageState();
@@ -786,7 +781,6 @@ class _MapsTabPage extends StatefulWidget {
 class _MapsTabPageState extends State<_MapsTabPage> {
   late MapController _mapController;
   LocationData? _currentLocation;
-  bool _locationPermissionGranted = false;
 
   @override
   void initState() {
@@ -821,7 +815,6 @@ class _MapsTabPageState extends State<_MapsTabPage> {
 
     setState(() {
       _currentLocation = locationData;
-      _locationPermissionGranted = true;
     });
 
     // Move map to current location
@@ -913,7 +906,7 @@ class _MapsTabPageState extends State<_MapsTabPage> {
                                   _currentLocation!.longitude!,
                                 ),
                                 radius: 500, // 500 meters
-                                color: AppColors.black.withOpacity(0.05),
+                                color: AppColors.black.withValues(alpha: 0.05),
                                 borderColor: AppColors.black,
                                 borderStrokeWidth: 1,
                               ),
@@ -1016,7 +1009,7 @@ class _MapsTabPageState extends State<_MapsTabPage> {
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: AppColors.black.withOpacity(0.3),
+                                        color: AppColors.black.withValues(alpha: 0.3),
                                         blurRadius: 8,
                                         offset: const Offset(0, 2),
                                       ),
@@ -1046,7 +1039,7 @@ class _MapsTabPageState extends State<_MapsTabPage> {
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.black.withOpacity(0.2),
+                          color: AppColors.black.withValues(alpha: 0.2),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -1088,7 +1081,7 @@ class _MapsTabPageState extends State<_MapsTabPage> {
 }
 
 class _NudgesTabPage extends StatefulWidget {
-  const _NudgesTabPage({super.key});
+  const _NudgesTabPage();
 
   @override
   State<_NudgesTabPage> createState() => _NudgesTabPageState();
@@ -1171,7 +1164,7 @@ class _NudgesTabPageState extends State<_NudgesTabPage>
 }
 
 class _ReceivedNudgesTab extends StatelessWidget {
-  const _ReceivedNudgesTab({super.key});
+  const _ReceivedNudgesTab();
 
   @override
   Widget build(BuildContext context) {
@@ -1258,7 +1251,7 @@ class _ReceivedNudgesTab extends StatelessWidget {
 }
 
 class _SentNudgesTab extends StatelessWidget {
-  const _SentNudgesTab({super.key});
+  const _SentNudgesTab();
 
   @override
   Widget build(BuildContext context) {
@@ -1337,7 +1330,7 @@ class _SentNudgesTab extends StatelessWidget {
 }
 
 class _ProfileTabPage extends StatelessWidget {
-  const _ProfileTabPage({super.key});
+  const _ProfileTabPage();
 
   @override
   Widget build(BuildContext context) {
@@ -1346,7 +1339,7 @@ class _ProfileTabPage extends StatelessWidget {
 }
 
 class _ProfileTabContent extends StatefulWidget {
-  const _ProfileTabContent({super.key});
+  const _ProfileTabContent();
 
   @override
   State<_ProfileTabContent> createState() => _ProfileTabContentState();
@@ -1364,8 +1357,8 @@ class _ProfileTabContentState extends State<_ProfileTabContent> {
     final user = userContext.user;
     
     // Get user data from context
-    String _userName = user?.name ?? 'User';
-    String _userEmail = user?.email ?? 'user@example.com';
+    String userName = user?.name ?? 'User';
+    String userEmail = user?.email ?? 'user@example.com';
     
     return Column(
       children: [
@@ -1411,7 +1404,7 @@ class _ProfileTabContentState extends State<_ProfileTabContent> {
               const SizedBox(height: 16),
               // Display name
               Text(
-                _userName, // Use real user name from context
+                userName, // Use real user name from context
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
@@ -1421,7 +1414,7 @@ class _ProfileTabContentState extends State<_ProfileTabContent> {
               const SizedBox(height: 4),
               // Email
               Text(
-                _userEmail, // Use real user email from context
+                userEmail, // Use real user email from context
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
@@ -1871,257 +1864,15 @@ class _ProfileTabContentState extends State<_ProfileTabContent> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.w600,
-        color: AppColors.textPrimary,
-      ),
-    );
-  }
 
-  Widget _buildProfileField(
-    String label,
-    String value, {
-    bool isEditable = true,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.divider, width: 1),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w400,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          if (isEditable)
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(left: 16),
-                child: TextFormField(
-                  initialValue: value,
-                  decoration: InputDecoration(
-                    hintText: value,
-                    border: InputBorder.none,
-                    isDense: true,
-                  ),
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-            )
-          else
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildDropdownField<T>(
-    String label,
-    T value,
-    List<T> items,
-    void Function(T?)? onChanged,
-  ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.divider, width: 1),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: ButtonTheme(
-          alignedDropdown: true,
-          child: DropdownButton<T>(
-            isExpanded: true,
-            value: value,
-            items: items.map<DropdownMenuItem<T>>((T item) {
-              return DropdownMenuItem<T>(
-                value: item,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    item.toString(),
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-            onChanged: onChanged,
-            style: TextStyle(fontSize: 16, color: AppColors.textPrimary),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-          ),
-        ),
-      ),
-    );
-  }
 
-  Widget _buildExpandableList(String title, List<String> items) {
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        title: Text(
-          title,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        children: items
-            .map(
-              (item) => Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: Text(
-                  '• \$item',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-            )
-            .toList(),
-      ),
-    );
-  }
 
-  Widget _buildConnectionCard(String title, String count) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.divider, width: 1),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          Text(
-            count,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.black,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
+
+
+
+
 }
 
-class _ChangeSOSPinTabContent extends StatelessWidget {
-  const _ChangeSOSPinTabContent({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Icon
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceVariant,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.divider, width: 1),
-            ),
-            child: Icon(Icons.lock, size: 40, color: AppColors.black),
-          ),
-          const SizedBox(height: 40),
-
-          // Header
-          Text(
-            'Change SOS PIN',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-              height: 1.2,
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Description
-          Text(
-            'Update your 4-digit emergency SOS PIN',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w400,
-              color: AppColors.textSecondary,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 48),
-
-          // Change PIN button
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              onPressed: () {
-                // Navigate to change PIN screen
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SetSOSPinScreen(),
-                  ),
-                );
-              },
-              style: AppColors.primaryButtonStyle(),
-              child: Text(
-                'Change PIN',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.white,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
