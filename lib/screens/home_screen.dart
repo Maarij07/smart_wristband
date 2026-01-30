@@ -5,8 +5,10 @@ import 'package:location/location.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'dart:async';
+import 'dart:convert';
 import '../utils/colors.dart';
 import '../services/user_context.dart';
+import '../services/location_service.dart';
 
 import 'sos_alert_screen.dart';
 import 'signin_screen.dart';
@@ -21,14 +23,61 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
-
+  late MapController _mapController; // Persistent map controller
+  final LocationService _locationService = LocationService();
+  bool _isMapInitialized = false; // Track map initialization state
+  LocationData? _currentLocation; // Cache current location
+  
   List<Widget> get _pages => [
     const _HomeTabPage(),
     const _MessagesTabPage(),
-    const _MapsTabPage(),
+    _MapsTabPage(
+      mapController: _mapController, 
+      locationService: _locationService,
+      isMapInitialized: _isMapInitialized,
+      currentLocation: _currentLocation,
+    ),
     _NudgesTabPage(), // Needs to be non-const due to TabController
     const _ProfileTabPage(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _mapController = MapController();
+    // Initialize location service early
+    _locationService.initialize();
+    // Initialize map once
+    _initializeMapOnce();
+  }
+  
+  Future<void> _initializeMapOnce() async {
+    if (_isMapInitialized) return; // Already initialized
+    
+    // Get location from service (cached or fresh)
+    final location = await _locationService.getCurrentLocation();
+    
+    if (location != null && mounted) {
+      setState(() {
+        _currentLocation = location;
+        _isMapInitialized = true;
+      });
+      
+      // Move map to current location after widget is rendered
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _isMapInitialized) {
+          _mapController.move(
+            LatLng(location.latitude!, location.longitude!),
+            15.0,
+          );
+        }
+      });
+    } else {
+      setState(() {
+        _isMapInitialized = true; // Mark as initialized even if no location
+      });
+    }
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -103,30 +152,43 @@ class _HomeTabPageState extends State<_HomeTabPage> {
   bool _isConnected = false;
   String _deviceName = 'No device paired';
   String _relationshipStatus = 'Not paired';
+  String _selectedRelationshipStatus = 'Single'; // New: track selected relationship status
   
   // BLE subscription for incoming data
   StreamSubscription<BluetoothConnectionState>? _connectionSubscription;
   StreamSubscription<List<int>>? _dataSubscription;
   StreamSubscription<int>? _periodicSubscription;
   BluetoothCharacteristic? _incomingDataCharacteristic;
+  BluetoothCharacteristic? _outgoingDataCharacteristic; // Added for sending commands
   
   @override
   void initState() {
     super.initState();
     // Initialize with context data if available
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final userContext = Provider.of<UserContext>(context, listen: false);
-      if (userContext.connectedDevice != null) {
-        setState(() {
-          _isConnected = userContext.connectedDevice!.isConnected;
-          _deviceName = userContext.connectedDevice!.name;
-          _relationshipStatus = _isConnected ? 'Paired & Active' : 'Not paired';
-        });
-        
-        // Set up BLE listener for incoming signals from wristband
-        _setupBleListener(userContext.connectedDevice!.id);
-      }
+      _checkAndSetupConnection();
     });
+  }
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Check connection whenever dependencies change
+    _checkAndSetupConnection();
+  }
+  
+  void _checkAndSetupConnection() {
+    final userContext = Provider.of<UserContext>(context, listen: false);
+    if (userContext.connectedDevice != null) {
+      setState(() {
+        _isConnected = userContext.connectedDevice!.isConnected;
+        _deviceName = userContext.connectedDevice!.name;
+        _relationshipStatus = _isConnected ? 'Paired & Active' : 'Not paired';
+      });
+      
+      // Set up BLE listener for incoming signals from wristband
+      _setupBleListener(userContext.connectedDevice!.id);
+    }
   }
   
   void _setupBleListener(String deviceId) async {
@@ -136,40 +198,54 @@ class _HomeTabPageState extends State<_HomeTabPage> {
       // Discover services
       List<BluetoothService> services = await device.discoverServices();
       
-      // Look for the service that handles incoming data from the wristband
-      BluetoothService? wristbandService = services.firstWhere(
-        (service) => service.uuid.toString().toLowerCase().contains('fff0') || 
-                       service.uuid.toString().toLowerCase().contains('custom') ||
-                       service.uuid.toString().toLowerCase().contains('wristband'),
-        orElse: () => services.first, // fallback to first service if none found
-      );
+      // YOUR WRISTBAND'S ACTUAL SERVICE UUID
+      const String wristbandServiceUuid = '12345678-04d2-162e-04d2-56789abcdef0';
+      const String wristbandNotifyCharUuid = '12345678-04d2-162e-04d2-56789abcdef2';
+      const String wristbandWriteCharUuid = '12345678-04d2-162e-04d2-56789abcdef1';
       
-      // Find the characteristic that receives data from the wristband
-      _incomingDataCharacteristic = wristbandService.characteristics
-          .firstWhere(
-        (char) => char.properties.read || char.properties.notify,
-        orElse: () => wristbandService.characteristics.firstWhere(
-          (char) => char.properties.write,
-          orElse: () => wristbandService.characteristics.first,
-        ),
-      );
+      // Find your wristband's service
+      BluetoothService? wristbandService;
+      try {
+        wristbandService = services.firstWhere(
+          (service) => service.uuid.toString().toLowerCase() == wristbandServiceUuid,
+        );
+        print('✓ Found wristband service for listening: ${wristbandService.uuid}');
+      } catch (e) {
+        print('❌ Could not find wristband service');
+        return;
+      }
+      
+      // Find the NOTIFY characteristic (for receiving data FROM wristband)
+      try {
+        _incomingDataCharacteristic = wristbandService.characteristics.firstWhere(
+          (char) => char.uuid.toString().toLowerCase() == wristbandNotifyCharUuid,
+        );
+        print('✓ Found notify characteristic: ${_incomingDataCharacteristic!.uuid}');
+      } catch (e) {
+        print('❌ Could not find notify characteristic');
+      }
+      
+      // Find the WRITE characteristic (for sending data TO wristband)
+      try {
+        _outgoingDataCharacteristic = wristbandService.characteristics.firstWhere(
+          (char) => char.uuid.toString().toLowerCase() == wristbandWriteCharUuid,
+        );
+        print('✓ Found write characteristic: ${_outgoingDataCharacteristic!.uuid}');
+      } catch (e) {
+        print('❌ Could not find write characteristic');
+      }
       
       // Subscribe to notifications from the wristband
-      if (_incomingDataCharacteristic!.properties.notify) {
+      if (_incomingDataCharacteristic != null && 
+          _incomingDataCharacteristic!.properties.notify) {
         await _incomingDataCharacteristic!.setNotifyValue(true);
+        print('✓ Enabled notifications on wristband');
+        
         _dataSubscription = _incomingDataCharacteristic!.lastValueStream.listen((data) {
           _handleIncomingSignal(data);
         });
       } else {
-        // If notifications aren't available, periodically read the characteristic
-        Stream.periodic(const Duration(seconds: 1)).listen((_) async {
-          try {
-            List<int> data = await _incomingDataCharacteristic!.read();
-            _handleIncomingSignal(data);
-          } catch (e) {
-            print('Error reading characteristic: $e');
-          }
-        });
+        print('⚠️ Notify characteristic not available or does not support notifications');
       }
       
       // Listen for connection state changes
@@ -178,10 +254,11 @@ class _HomeTabPageState extends State<_HomeTabPage> {
           _isConnected = state == BluetoothConnectionState.connected;
           _relationshipStatus = _isConnected ? 'Paired & Active' : 'Disconnected';
         });
+        print('Connection state changed: ${_isConnected ? "Connected" : "Disconnected"}');
       });
       
     } catch (e) {
-      print('Error setting up BLE listener: $e');
+      print('❌ Error setting up BLE listener: $e');
     }
   }
   
@@ -198,7 +275,7 @@ class _HomeTabPageState extends State<_HomeTabPage> {
       
       // Update user context with battery information
       final userContext = Provider.of<UserContext>(context, listen: false);
-      // This would update the health metrics in the context
+      userContext.updateDeviceBatteryLevel('${batteryLevel}%');
     } else if (signal.startsWith('R')) {
       // Status report signal (e.g., RS)
       String status = signal.substring(1); // Remove 'R' prefix
@@ -341,18 +418,26 @@ class _HomeTabPageState extends State<_HomeTabPage> {
                           const SizedBox(height: 20),
 
                           // Action buttons
-                          _buildActionButton(
-                            'Disconnect',
-                            Icons.bluetooth_disabled,
-                            Colors.red,
-                            () {
-                              setState(() {
-                                _isConnected = false;
-                                _relationshipStatus = 'Disconnected';
-                              });
-                              Navigator.pop(context);
-                            },
-                          ),
+                          if (_isConnected)
+                            _buildActionButton(
+                              'Disconnect',
+                              Icons.bluetooth_disabled,
+                              Colors.red,
+                              () {
+                                setState(() {
+                                  _isConnected = false;
+                                  _relationshipStatus = 'Disconnected';
+                                });
+                                Navigator.pop(context);
+                              },
+                            )
+                          else
+                            _buildActionButton(
+                              'Reconnect',
+                              Icons.bluetooth_connected,
+                              Colors.green,
+                              _reconnectToDevice,
+                            ),
                           const SizedBox(height: 12),
                           _buildActionButton(
                             'Forget Device',
@@ -699,6 +784,9 @@ class _HomeTabPageState extends State<_HomeTabPage> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 20),
+                // Relationship Status Dropdown
+                _buildRelationshipStatusDropdown(),
               ],
             ),
           ),
@@ -854,6 +942,314 @@ class _HomeTabPageState extends State<_HomeTabPage> {
     );
   }
   
+  Widget _buildRelationshipStatusDropdown() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.divider,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Relationship Status',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: _selectedRelationshipStatus,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: AppColors.surface,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: AppColors.divider),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: AppColors.black, width: 2),
+              ),
+            ),
+            items: [
+              DropdownMenuItem(
+                value: 'Single',
+                child: Row(
+                  children: [
+                    Icon(Icons.circle, color: Colors.green, size: 16),
+                    const SizedBox(width: 8),
+                    Text('Single (Green Light)'),
+                  ],
+                ),
+              ),
+              DropdownMenuItem(
+                value: 'Taken',
+                child: Row(
+                  children: [
+                    Icon(Icons.circle, color: Colors.red, size: 16),
+                    const SizedBox(width: 8),
+                    Text('Taken (Red Light)'),
+                  ],
+                ),
+              ),
+              DropdownMenuItem(
+                value: 'Complicated',
+                child: Row(
+                  children: [
+                    Icon(Icons.circle, color: Colors.yellow, size: 16),
+                    const SizedBox(width: 8),
+                    Text('Complicated (Yellow Light)'),
+                  ],
+                ),
+              ),
+              DropdownMenuItem(
+                value: 'Private',
+                child: Row(
+                  children: [
+                    Icon(Icons.lock, color: Colors.grey, size: 16),
+                    const SizedBox(width: 8),
+                    Text('Private (No Light)'),
+                  ],
+                ),
+              ),
+            ],
+            onChanged: (String? newValue) {
+              if (newValue != null) {
+                setState(() {
+                  _selectedRelationshipStatus = newValue;
+                });
+                
+                // Update in Firebase and send BLE command
+                _updateRelationshipStatus(newValue);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+  
+  void _updateRelationshipStatus(String status) async {
+    try {
+      // Update in UserContext (which will sync to Firebase)
+      final userContext = Provider.of<UserContext>(context, listen: false);
+      await userContext.updateUserProfile(relationshipStatus: status);
+      
+      // Send BLE command to wristband
+      await _sendBleCommand(status);
+      
+      print('Relationship status updated to: $status');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Relationship status updated to $status'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error updating relationship status: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update relationship status: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+  
+  Future<void> _sendBleCommand(String status) async {
+    try {
+      // Map relationship status to BLE command
+      String command;
+      switch (status) {
+        case 'Single':
+          command = 'S'; // Set Single - Green light
+          break;
+        case 'Taken':
+          command = 'T'; // Set Taken - Red light
+          break;
+        case 'Complicated':
+          command = 'C'; // Set Complicated - Yellow light
+          break;
+        case 'Private':
+          command = 'P'; // Set Private - No light
+          break;
+        default:
+          command = 'P'; // Default to Private
+      }
+      
+      // Send command to wristband
+      if (_outgoingDataCharacteristic != null) {
+        List<int> commandBytes = utf8.encode(command);
+        
+        // Check which write method to use
+        if (_outgoingDataCharacteristic!.properties.writeWithoutResponse) {
+          await _outgoingDataCharacteristic!.write(commandBytes, withoutResponse: true);
+          print('Sent BLE command (without response): $command');
+        } else if (_outgoingDataCharacteristic!.properties.write) {
+          await _outgoingDataCharacteristic!.write(commandBytes, withoutResponse: false);
+          print('Sent BLE command (with response): $command');
+        }
+      } else {
+        // Try to find the outgoing characteristic
+        final userContext = Provider.of<UserContext>(context, listen: false);
+        if (userContext.connectedDevice != null) {
+          await _findAndSendCommand(userContext.connectedDevice!.id, command);
+        }
+      }
+    } catch (e) {
+      print('Error sending BLE command: $e');
+    }
+  }
+  
+  Future<void> _findAndSendCommand(String deviceId, String command) async {
+    try {
+      BluetoothDevice device = BluetoothDevice.fromId(deviceId);
+      List<BluetoothService> services = await device.discoverServices();
+      
+      print('Found ${services.length} services');
+      
+      // YOUR WRISTBAND'S ACTUAL SERVICE UUID
+      const String wristbandServiceUuid = '12345678-04d2-162e-04d2-56789abcdef0';
+      const String wristbandWriteCharUuid = '12345678-04d2-162e-04d2-56789abcdef1';
+      
+      // Find your wristband's service
+      BluetoothService? wristbandService;
+      try {
+        wristbandService = services.firstWhere(
+          (service) => service.uuid.toString().toLowerCase() == wristbandServiceUuid,
+        );
+        print('✓ Found wristband service: ${wristbandService.uuid}');
+      } catch (e) {
+        print('❌ Could not find wristband service with UUID: $wristbandServiceUuid');
+        // Print all available services for debugging
+        print('Available services:');
+        for (var service in services) {
+          print('  - ${service.uuid}');
+        }
+        return;
+      }
+      
+      // Find the write characteristic
+      BluetoothCharacteristic? outgoingChar;
+      try {
+        outgoingChar = wristbandService.characteristics.firstWhere(
+          (char) => char.uuid.toString().toLowerCase() == wristbandWriteCharUuid,
+        );
+        print('✓ Found write characteristic: ${outgoingChar.uuid}');
+        print('  Properties: writeWithoutResponse=${outgoingChar.properties.writeWithoutResponse}');
+      } catch (e) {
+        print('❌ Could not find write characteristic with UUID: $wristbandWriteCharUuid');
+        // Print all available characteristics for debugging
+        print('Available characteristics in service:');
+        for (var char in wristbandService.characteristics) {
+          print('  - ${char.uuid} (write: ${char.properties.write}, writeWithoutResponse: ${char.properties.writeWithoutResponse})');
+        }
+        return;
+      }
+      
+      // Send the command
+      if (outgoingChar != null) {
+        List<int> commandBytes = utf8.encode(command);
+        print('Sending command: $command (bytes: $commandBytes)');
+        
+        try {
+          // Your wristband uses writeWithoutResponse
+          await outgoingChar.write(commandBytes, withoutResponse: true);
+          print('✓ Successfully sent BLE command: $command');
+          
+          // Save reference for future use
+          _outgoingDataCharacteristic = outgoingChar;
+        } catch (e) {
+          print('❌ Error writing to characteristic: $e');
+        }
+      }
+    } catch (e) {
+      print('❌ Error finding and sending command: $e');
+    }
+  }
+  
+  Future<void> _reconnectToDevice() async {
+    try {
+      final userContext = Provider.of<UserContext>(context, listen: false);
+      if (userContext.connectedDevice == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No device to reconnect to'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      final deviceId = userContext.connectedDevice!.id;
+      BluetoothDevice device = BluetoothDevice.fromId(deviceId);
+      
+      // Show connecting status
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Connecting to device...'),
+            backgroundColor: Colors.blue,
+          ),
+        );
+      }
+      
+      // Attempt to connect
+      await device.connect(
+        license: License.free,
+        timeout: Duration(seconds: 15),
+        autoConnect: false,
+      );
+      
+      // Update UI state
+      setState(() {
+        _isConnected = true;
+        _deviceName = userContext.connectedDevice!.name;
+        _relationshipStatus = 'Connected';
+      });
+      
+      // Set up BLE listeners again
+      _setupBleListener(deviceId);
+      
+      if (mounted) {
+        Navigator.pop(context); // Close the drawer
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Successfully reconnected to ${_deviceName}'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+      
+      print('Successfully reconnected to device: $_deviceName');
+    } catch (e) {
+      print('Error reconnecting to device: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to reconnect: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+  
   @override
   void dispose() {
     // Cancel all subscriptions
@@ -927,62 +1323,99 @@ class _MessagesTabPage extends StatelessWidget {
 }
 
 class _MapsTabPage extends StatefulWidget {
-  const _MapsTabPage();
+  final MapController mapController;
+  final LocationService locationService;
+  final bool isMapInitialized;
+  final LocationData? currentLocation;
+
+  const _MapsTabPage({
+    required this.mapController,
+    required this.locationService,
+    required this.isMapInitialized,
+    required this.currentLocation,
+  });
 
   @override
   State<_MapsTabPage> createState() => _MapsTabPageState();
 }
 
 class _MapsTabPageState extends State<_MapsTabPage> {
-  late MapController _mapController;
-  LocationData? _currentLocation;
-
-  @override
-  void initState() {
-    super.initState();
-    _mapController = MapController();
-    _checkLocationPermission();
+  
+  Widget _buildMapSkeleton() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.divider, width: 1),
+      ),
+      child: Column(
+        children: [
+          // Header skeleton
+          Container(
+            height: 40,
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  width: 120,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: AppColors.divider,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                Container(
+                  width: 80,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: AppColors.divider,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Map area skeleton
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.divider,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Loading map...',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  Future<void> _checkLocationPermission() async {
-    Location location = Location();
 
-    bool serviceEnabled;
-    PermissionStatus permissionGranted;
-    LocationData locationData;
-
-    // Check if location service is enabled
-    serviceEnabled = await location.serviceEnabled();
-    if (!serviceEnabled) {
-      serviceEnabled = await location.requestService();
-      if (!serviceEnabled) return;
-    }
-
-    // Check location permission
-    permissionGranted = await location.hasPermission();
-    if (permissionGranted == PermissionStatus.denied) {
-      permissionGranted = await location.requestPermission();
-      if (permissionGranted != PermissionStatus.granted) return;
-    }
-
-    // Get current location
-    locationData = await location.getLocation();
-
-    setState(() {
-      _currentLocation = locationData;
-    });
-
-    // Move map to current location
-    if (locationData.latitude != null && locationData.longitude != null) {
-      _mapController.move(
-        LatLng(locationData.latitude!, locationData.longitude!),
-        15.0,
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.isMapInitialized) {
+      return _buildMapSkeleton();
+    }
+    
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -1024,203 +1457,51 @@ class _MapsTabPageState extends State<_MapsTabPage> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           Expanded(
-            child: Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.divider, width: 1),
-                    ),
-                    child: FlutterMap(
-                      mapController: _mapController,
-                      options: MapOptions(
-                        initialCenter: _currentLocation != null
-                            ? LatLng(
-                                _currentLocation!.latitude!,
-                                _currentLocation!.longitude!,
-                              )
-                            : LatLng(51.5, -0.09), // Default to London
-                        initialZoom: _currentLocation != null ? 15.0 : 13.0,
-                      ),
-                      children: [
-                        TileLayer(
-                          urlTemplate:
-                              'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          subdomains: ['a', 'b', 'c'],
-                        ),
-                        if (_currentLocation != null) ...[
-                          // 500m radius circle
-                          CircleLayer(
-                            circles: [
-                              CircleMarker(
-                                point: LatLng(
-                                  _currentLocation!.latitude!,
-                                  _currentLocation!.longitude!,
-                                ),
-                                radius: 500, // 500 meters
-                                color: AppColors.black.withValues(alpha: 0.05),
-                                borderColor: AppColors.black,
-                                borderStrokeWidth: 1,
-                              ),
-                            ],
-                          ),
-                          // Nearby dummy markers
-                          MarkerLayer(
-                            markers: [
-                              // Dummy marker 1 - 200m northeast
-                              Marker(
-                                width: 30.0,
-                                height: 30.0,
-                                point: LatLng(
-                                  _currentLocation!.latitude! + 0.0018,
-                                  _currentLocation!.longitude! + 0.0018,
-                                ),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.green,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: AppColors.white,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: const Icon(
-                                    Icons.person,
-                                    color: Colors.white,
-                                    size: 16,
-                                  ),
-                                ),
-                              ),
-                              // Dummy marker 2 - 300m southwest
-                              Marker(
-                                width: 30.0,
-                                height: 30.0,
-                                point: LatLng(
-                                  _currentLocation!.latitude! - 0.0027,
-                                  _currentLocation!.longitude! - 0.0027,
-                                ),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: AppColors.white,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: const Icon(
-                                    Icons.person,
-                                    color: Colors.white,
-                                    size: 16,
-                                  ),
-                                ),
-                              ),
-                              // Dummy marker 3 - 400m east
-                              Marker(
-                                width: 30.0,
-                                height: 30.0,
-                                point: LatLng(
-                                  _currentLocation!.latitude!,
-                                  _currentLocation!.longitude! + 0.0036,
-                                ),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.purple,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: AppColors.white,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: const Icon(
-                                    Icons.person,
-                                    color: Colors.white,
-                                    size: 16,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          // Custom themed location marker
-                          MarkerLayer(
-                            markers: [
-                              Marker(
-                                width: 40.0,
-                                height: 40.0,
-                                point: LatLng(
-                                  _currentLocation!.latitude!,
-                                  _currentLocation!.longitude!,
-                                ),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: AppColors.black,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: AppColors.white,
-                                      width: 3,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: AppColors.black.withValues(alpha: 0.3),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: const Icon(
-                                    Icons.location_on,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: FlutterMap(
+                mapController: widget.mapController,
+                options: MapOptions(
+                  initialCenter: widget.currentLocation != null
+                      ? LatLng(widget.currentLocation!.latitude!, widget.currentLocation!.longitude!)
+                      : const LatLng(51.5074, -0.1278), // London default
+                  initialZoom: 13.0,
+                  interactionOptions: const InteractionOptions(
+                    flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
                   ),
                 ),
-                // Recenter button
-                Positioned(
-                  top: 16,
-                  right: 16,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.black.withValues(alpha: 0.2),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: IconButton(
-                      icon: Icon(
-                        Icons.my_location,
-                        color: AppColors.black,
-                        size: 20,
-                      ),
-                      onPressed: _currentLocation != null
-                          ? () {
-                              _mapController.move(
-                                LatLng(
-                                  _currentLocation!.latitude!,
-                                  _currentLocation!.longitude!,
-                                ),
-                                15.0,
-                              );
-                            }
-                          : null,
-                    ),
+                children: [
+                  TileLayer(
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.example.smart_wristband',
                   ),
-                ),
-              ],
+                  MarkerLayer(
+                    markers: [
+                      if (widget.currentLocation != null)
+                        Marker(
+                          width: 20,
+                          height: 20,
+                          point: LatLng(
+                            widget.currentLocation!.latitude!,
+                            widget.currentLocation!.longitude!,
+                          ),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -1228,11 +1509,7 @@ class _MapsTabPageState extends State<_MapsTabPage> {
     );
   }
 
-  @override
-  void dispose() {
-    _mapController.dispose();
-    super.dispose();
-  }
+
 }
 
 class _NudgesTabPage extends StatefulWidget {
@@ -1624,9 +1901,7 @@ class _ProfileTabContentState extends State<_ProfileTabContent> {
                             <String>[
                               'Single',
                               'In a relationship',
-                              'Married',
-                              'Divorced',
-                              'Widowed',
+                              'Complicated',
                             ].map<DropdownMenuItem<String>>((String value) {
                               return DropdownMenuItem<String>(
                                 value: value,

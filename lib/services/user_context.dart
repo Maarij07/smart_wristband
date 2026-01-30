@@ -119,6 +119,21 @@ class UserContext extends ChangeNotifier {
       notifyListeners();
     }
   }
+  
+  void updateDeviceBatteryLevel(String batteryLevel) {
+    if (_connectedDevice != null) {
+      _connectedDevice = Device(
+        id: _connectedDevice!.id,
+        name: _connectedDevice!.name,
+        platformName: _connectedDevice!.platformName,
+        deviceType: _connectedDevice!.deviceType,
+        connectedAt: _connectedDevice!.connectedAt,
+        isConnected: _connectedDevice!.isConnected,
+        batteryLevel: batteryLevel,
+      );
+      notifyListeners();
+    }
+  }
 
   void setLoading(bool loading) {
     _isLoading = loading;
@@ -130,12 +145,50 @@ class UserContext extends ChangeNotifier {
     _connectedDevice = null;
     notifyListeners();
   }
+  
+  // Load user data from Firebase
+  Future<void> loadUserData(String uid) async {
+    print('Starting to load user data for UID: $uid');
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      print('Firebase document exists: ${doc.exists}');
+      if (doc.exists) {
+        final user = User.fromFirestore(doc);
+        print('User data from Firestore: name=${user.name}, email=${user.email}');
+        _user = user;
+        notifyListeners();
+        print('User data loaded successfully: ${user.name}, ${user.email}');
+      } else {
+        print('User document not found for UID: $uid');
+        // Create a default user if not found
+        _user = User(
+          id: uid,
+          email: 'user2@example.com',
+          name: 'User',
+          createdAt: DateTime.now(),
+        );
+        notifyListeners();
+        print('Created default user');
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+      // Create a default user on error
+      _user = User(
+        id: uid,
+        email: 'user2@example.com',
+        name: 'User',
+        createdAt: DateTime.now(),
+      );
+      notifyListeners();
+      print('Created default user due to error');
+    }
+  }
 
   // Get user health metrics from context or device
   Map<String, dynamic>? getUserHealthMetrics() {
     // This would typically fetch from the connected device or Firestore
     if (_connectedDevice != null) {
-      // Placeholder for actual device metrics
+      // Return actual device metrics when connected
       return {
         'heartRate': 72,
         'steps': 8432,
@@ -146,8 +199,8 @@ class UserContext extends ChangeNotifier {
         'bloodPressure': {'systolic': 120, 'diastolic': 80},
         'connections': 12,
         'onlineNow': 7,
-        'battery': '87%',
-        'signal': 'Strong',
+        'battery': _connectedDevice!.batteryLevel ?? 'N/A',
+        'signal': _connectedDevice!.isConnected ? 'Strong' : 'Weak',
         'recentActivities': [
           {'title': 'SOS Alert Sent', 'time': '10:15 PM', 'icon': 'warning', 'color': 'red'},
           {'title': 'New Connection', 'time': 'Yesterday', 'icon': 'person_add', 'color': 'green'},
@@ -165,8 +218,8 @@ class UserContext extends ChangeNotifier {
       'bloodPressure': {'systolic': 0, 'diastolic': 0},
       'connections': 0,
       'onlineNow': 0,
-      'battery': 'Unknown',
-      'signal': 'Unknown',
+      'battery': 'N/A',
+      'signal': 'N/A',
       'recentActivities': [],
     };
   }
@@ -224,21 +277,20 @@ class UserContext extends ChangeNotifier {
 
   // Send appropriate command to wristband based on relationship status
   Future<void> _sendRelationshipStatusCommand(String status) async {
-    switch (status.toLowerCase()) {
-      case 'single':
+    print('Sending relationship status command for: $status');
+    switch (status) {
+      case 'Single':
         await setWristbandToSingle();
         break;
-      case 'in a relationship':
+      case 'Taken':
         await setWristbandToTaken();
         break;
-      case 'complicated':
+      case 'Complicated':
         await setWristbandToComplicated();
         break;
-      case 'married':
-        await setWristbandToTaken(); // Treat married as taken
+      case 'Private':
+        await setWristbandToPrivate();
         break;
-      case 'divorced':
-      case 'widowed':
       default:
         await setWristbandToPrivate(); // Default to private
         break;
@@ -247,37 +299,56 @@ class UserContext extends ChangeNotifier {
 
   // Method to send command to wristband
   Future<void> sendCommandToWristband(String command) async {
+    print('Attempting to send command: $command');
     if (_connectedDevice != null) {
+      print('Connected device found: ${_connectedDevice!.id}');
       try {
         // Get the connected device from FlutterBluePlus
         BluetoothDevice device = BluetoothDevice.fromId(_connectedDevice!.id);
         
         // Find the service and characteristic for communication
-        // This assumes there's a specific service UUID for wristband communication
+        // YOUR WRISTBAND'S ACTUAL SERVICE UUID
+        const String wristbandServiceUuid = '12345678-04d2-162e-04d2-56789abcdef0';
+        const String wristbandWriteCharUuid = '12345678-04d2-162e-04d2-56789abcdef1';
+        
+        // Discover services
         List<BluetoothService> services = await device.discoverServices();
         
-        // Look for a service that handles commands
-        // Using a common UUID pattern for demonstration
-        BluetoothService? wristbandService = services.firstWhere(
-          (service) => service.uuid.toString().toLowerCase().contains('fff0') || 
-                         service.uuid.toString().toLowerCase().contains('custom') ||
-                         service.uuid.toString().toLowerCase().contains('wristband'),
-          orElse: () => services.first, // fallback to first service if none found
-        );
+        BluetoothService? wristbandService;
+        try {
+          wristbandService = services.firstWhere(
+            (service) => service.uuid.toString().toLowerCase() == wristbandServiceUuid,
+          );
+          print('✓ Found wristband service in UserContext');
+        } catch (e) {
+          print('❌ Could not find wristband service in UserContext');
+          return;
+        }
         
         // Find the characteristic for writing commands
-        BluetoothCharacteristic? commandCharacteristic = wristbandService.characteristics
-            .firstWhere(
-          (char) => char.properties.write || char.properties.writeWithoutResponse,
-          orElse: () => wristbandService.characteristics.firstWhere(
-            (char) => char.properties.notify || char.properties.read,
-            orElse: () => wristbandService.characteristics.first,
-          ),
-        );
+        BluetoothCharacteristic? commandCharacteristic;
+        try {
+          commandCharacteristic = wristbandService.characteristics.firstWhere(
+            (char) => char.uuid.toString().toLowerCase() == wristbandWriteCharUuid,
+          );
+          print('✓ Found write characteristic in UserContext');
+        } catch (e) {
+          print('❌ Could not find write characteristic in UserContext');
+          return;
+        }
         
         // Convert the command string to bytes and send
         List<int> commandBytes = utf8.encode(command);
-        await commandCharacteristic.write(commandBytes, withoutResponse: false);
+        // Check if the characteristic supports write or writeWithoutResponse
+        if (commandCharacteristic.properties.writeWithoutResponse) {
+          await commandCharacteristic.write(commandBytes, withoutResponse: true);
+          print('Sent BLE command (without response): $command');
+        } else if (commandCharacteristic.properties.write) {
+          await commandCharacteristic.write(commandBytes, withoutResponse: false);
+          print('Sent BLE command (with response): $command');
+        } else {
+          print('Characteristic does not support write operations');
+        }
         
         print('Command "$command" sent to wristband successfully');
       } catch (e) {
