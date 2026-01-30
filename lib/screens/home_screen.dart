@@ -66,10 +66,16 @@ class _HomeScreenState extends State<HomeScreen> {
       // Move map to current location after widget is rendered
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _isMapInitialized) {
-          _mapController.move(
-            LatLng(location.latitude!, location.longitude!),
-            15.0,
-          );
+          // Check if map controller is attached to a widget before moving
+          try {
+            _mapController.move(
+              LatLng(location.latitude!, location.longitude!),
+              15.0,
+            );
+          } catch (e) {
+            // Map controller not ready yet, will initialize when map tab is opened
+            print('Map controller not ready yet: $e');
+          }
         }
       });
     } else {
