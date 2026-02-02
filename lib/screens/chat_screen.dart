@@ -99,7 +99,7 @@ class _ChatScreenState extends State<ChatScreen> {
           Expanded(
             child: ListView.builder(
               itemCount: _messages.length,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
               itemBuilder: (context, index) {
                 final message = _messages[index];
                 return _buildMessageBubble(message['text'], message['isMe'], message['time']);
@@ -153,41 +153,69 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildMessageBubble(String text, bool isMe, String time) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(
+        bottom: 8,
+        left: isMe ? 60 : 12,
+        right: isMe ? 12 : 60,
+      ),
       child: Row(
         mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
-          if (!isMe) const SizedBox(width: 40), // Space for avatar in received messages
+          if (!isMe)
+            Container(
+              width: 32,
+              height: 32,
+              margin: const EdgeInsets.only(right: 8),
+              decoration: BoxDecoration(
+                color: AppColors.black,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Center(
+                child: Text(
+                  widget.contactAvatar,
+                  style: TextStyle(
+                    color: AppColors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
           Flexible(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: isMe ? AppColors.black : AppColors.surfaceVariant,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(isMe ? 20 : 4),
+                  topRight: Radius.circular(isMe ? 4 : 20),
+                  bottomLeft: const Radius.circular(20),
+                  bottomRight: const Radius.circular(20),
+                ),
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
                     text,
                     style: TextStyle(
                       color: isMe ? AppColors.white : AppColors.textPrimary,
-                      fontSize: 14,
+                      fontSize: 15,
+                      height: 1.4,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     time,
                     style: TextStyle(
-                      color: isMe ? AppColors.white.withOpacity(0.7) : AppColors.textSecondary,
-                      fontSize: 10,
+                      color: isMe ? AppColors.white.withValues(alpha: 0.7) : AppColors.textSecondary,
+                      fontSize: 11,
                     ),
                   ),
                 ],
               ),
             ),
           ),
-          if (isMe) const SizedBox(width: 40), // Space for avatar in sent messages
         ],
       ),
     );
