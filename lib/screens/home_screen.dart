@@ -154,11 +154,14 @@ class _HomeTabPage extends StatefulWidget {
 }
 
 class _HomeTabPageState extends State<_HomeTabPage> {
+  // State for Find Me functionality
+  bool _isFinding = false;
+  
   // Wristband connection state
   bool _isConnected = false;
   String _deviceName = 'No device paired';
   String _relationshipStatus = 'Not paired';
-  String _selectedRelationshipStatus = 'Single'; // New: track selected relationship status
+  String _selectedRelationshipStatus = 'Private'; // New: track selected relationship status (default to Private)
   
   // BLE subscription for incoming data
   StreamSubscription<BluetoothConnectionState>? _connectionSubscription;
@@ -261,6 +264,11 @@ class _HomeTabPageState extends State<_HomeTabPage> {
           _relationshipStatus = _isConnected ? 'Paired & Active' : 'Disconnected';
         });
         print('Connection state changed: ${_isConnected ? "Connected" : "Disconnected"}');
+        
+        // Send audio notification signal when connected
+        if (_isConnected) {
+          _sendAudioNotification();
+        }
       });
       
     } catch (e) {
@@ -603,18 +611,18 @@ class _HomeTabPageState extends State<_HomeTabPage> {
     String signalStrength = healthMetrics?['signal'] ?? 'Strong'; // Default to Strong if not available
     
     // Get recent activities from context
-    List<Map<String, dynamic>> recentActivities = [];
-    if (healthMetrics != null) {
-      var rawActivities = healthMetrics['recentActivities'] ?? [];
-      recentActivities = rawActivities.map<Map<String, dynamic>>((activity) {
-        return {
-          'title': activity['title'],
-          'time': activity['time'],
-          'icon': _stringToIcon(activity['icon']),
-          'color': _stringToColor(activity['color']),
-        };
-      }).toList();
-    }
+    // List<Map<String, dynamic>> recentActivities = [];
+    // if (healthMetrics != null) {
+    //   var rawActivities = healthMetrics['recentActivities'] ?? [];
+    //   recentActivities = rawActivities.map<Map<String, dynamic>>((activity) {
+    //     return {
+    //       'title': activity['title'],
+    //       'time': activity['time'],
+    //       'icon': _stringToIcon(activity['icon']),
+    //       'color': _stringToColor(activity['color']),
+    //     };
+    //   }).toList();
+    // }
     
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -791,35 +799,46 @@ class _HomeTabPageState extends State<_HomeTabPage> {
                   ],
                 ),
                 const SizedBox(height: 20),
-                // Relationship Status Dropdown
-                _buildRelationshipStatusDropdown(),
+                // Relationship Status Dropdown (disabled when not connected)
+                IgnorePointer(
+                  ignoring: !_isConnected, // Disable when not connected
+                  child: Opacity(
+                    opacity: _isConnected ? 1.0 : 0.5, // Dim when disabled
+                    child: _buildRelationshipStatusDropdown(),
+                  ),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 24),
 
-          // Recent activity
-          Text(
-            'Recent Activity',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Activity list
-          Expanded(
-            child: ListView(
-              children: recentActivities.map((activity) {
-                return _buildActivityCard(
-                  activity['title'],
-                  activity['time'],
-                  activity['icon'],
-                  activity['color'],
-                );
-              }).toList(),
+          // Quick Action Button for Find Me / Stop Find (toggle)
+          IgnorePointer(
+            ignoring: !_isConnected, // Disable when not connected
+            child: Opacity(
+              opacity: _isConnected ? 1.0 : 0.5, // Dim when disabled
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _isFinding ? _stopFind : _findMe,
+                  icon: Icon(_isFinding ? Icons.stop : Icons.search, size: 20),
+                  label: Text(
+                    _isFinding ? 'Stop Find' : 'Find Me',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: _isFinding ? Colors.red : Colors.blue,
+                    foregroundColor: AppColors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -827,44 +846,116 @@ class _HomeTabPageState extends State<_HomeTabPage> {
     );
   }
   
-  // Helper method to convert string icon names to actual icons
-  IconData _stringToIcon(String iconString) {
-    switch (iconString) {
-      case 'warning':
-        return Icons.warning;
-      case 'person_add':
-        return Icons.person_add;
-      case 'bluetooth_connected':
-        return Icons.bluetooth_connected;
-      case 'people':
-        return Icons.people;
-      case 'wifi':
-        return Icons.wifi;
-      case 'battery_full':
-        return Icons.battery_full;
-      case 'signal_cellular_alt':
-        return Icons.signal_cellular_alt;
-      default:
-        return Icons.info;
+  // Method to send Find Me command to wristband
+  void _findMe() async {
+    try {
+      print('? Find Me command triggered');
+      setState(() {
+        _isFinding = true;
+      });
+      
+      await _sendFindCommand('?'); // '?' command to start continuous alarm
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Find Me command sent to wristband'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error sending Find Me command: $e');
+      setState(() {
+        _isFinding = false; // Reset on error
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send Find Me command'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
   
-  // Helper method to convert string color names to actual colors
-  Color _stringToColor(String colorString) {
-    switch (colorString) {
-      case 'red':
-        return Colors.red;
-      case 'green':
-        return Colors.green;
-      case 'blue':
-        return Colors.blue;
-      case 'orange':
-        return Colors.orange;
-      default:
-        return Colors.grey;
+  // Method to send Stop Find command to wristband
+  void _stopFind() async {
+    try {
+      print('! Stop Find command triggered');
+      setState(() {
+        _isFinding = false;
+      });
+      
+      await _sendFindCommand('!'); // '!' command to stop the alarm
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Stop Find command sent to wristband'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error sending Stop Find command: $e');
+      setState(() {
+        _isFinding = true; // Reset on error
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send Stop Find command'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
-    
+  
+  // Method to send audio notification signal to wristband when connected
+  Future<void> _sendAudioNotification() async {
+    try {
+      print('A Audio notification signal triggered on connection');
+      await _sendFindCommand('A'); // 'A' command for audio notification
+      
+      if (mounted) {
+        print('Audio notification sent to wristband');
+      }
+    } catch (e) {
+      print('Error sending audio notification: $e');
+    }
+  }
+  
+  // Method to send Find/Stop commands using the same pattern as relationship status
+  Future<void> _sendFindCommand(String command) async {
+    try {
+      // Send command to wristband using the same method as relationship status
+      if (_outgoingDataCharacteristic != null) {
+        List<int> commandBytes = utf8.encode(command);
+        
+        // Check which write method to use - use writeWithoutResponse like relationship status
+        if (_outgoingDataCharacteristic!.properties.writeWithoutResponse) {
+          await _outgoingDataCharacteristic!.write(commandBytes, withoutResponse: true);
+          print('Sent Find BLE command (without response): $command');
+        } else if (_outgoingDataCharacteristic!.properties.write) {
+          await _outgoingDataCharacteristic!.write(commandBytes, withoutResponse: false);
+          print('Sent Find BLE command (with response): $command');
+        }
+      } else {
+        // Try to find the outgoing characteristic
+        final userContext = Provider.of<UserContext>(context, listen: false);
+        if (userContext.connectedDevice != null) {
+          await _findAndSendCommand(userContext.connectedDevice!.id, command);
+        }
+      }
+    } catch (e) {
+      print('Error sending Find BLE command: $e');
+      rethrow; // Re-throw to be caught by the calling methods
+    }
+  }
+  
   Widget _buildStatCard(String title, String value, IconData icon) {
     return SizedBox(
       width: 120, // Fixed width instead of using context
@@ -889,60 +980,6 @@ class _HomeTabPageState extends State<_HomeTabPage> {
               color: AppColors.textSecondary,
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActivityCard(
-    String title,
-    String time,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.divider, width: 1),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                Text(
-                  time,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Icon(Icons.chevron_right, color: AppColors.textSecondary),
         ],
       ),
     );
@@ -992,7 +1029,7 @@ class _HomeTabPageState extends State<_HomeTabPage> {
                   children: [
                     Icon(Icons.circle, color: Colors.green, size: 16),
                     const SizedBox(width: 8),
-                    Text('Single (Green Light)'),
+                    Text('Single (Yellow Light)'),
                   ],
                 ),
               ),
@@ -1012,7 +1049,7 @@ class _HomeTabPageState extends State<_HomeTabPage> {
                   children: [
                     Icon(Icons.circle, color: Colors.yellow, size: 16),
                     const SizedBox(width: 8),
-                    Text('Complicated (Yellow Light)'),
+                    Text('Complicated (Green Light)'),
                   ],
                 ),
               ),
