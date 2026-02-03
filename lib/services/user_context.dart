@@ -90,10 +90,16 @@ class UserContext extends ChangeNotifier {
   User? _user;
   Device? _connectedDevice;
   bool _isLoading = false;
+  bool _isSosScreenShowing = false;
 
   User? get user => _user;
   Device? get connectedDevice => _connectedDevice;
   bool get isLoading => _isLoading;
+  bool get isSosScreenShowing => _isSosScreenShowing;
+  void setIsSosScreenShowing(bool showing) {
+    _isSosScreenShowing = showing;
+    notifyListeners();
+  }
 
   void setUser(User user) {
     _user = user;
@@ -398,7 +404,9 @@ class UserContext extends ChangeNotifier {
   }
 
   Future<void> confirmWristbandSos() async {
+    print('Sending SOS confirmation signal (K) to wristband');
     await sendCommandToWristband('K'); // SOS OK confirmation
+    print('SOS confirmation signal sent successfully');
   }
 
   Future<void> queryWristbandStatus() async {

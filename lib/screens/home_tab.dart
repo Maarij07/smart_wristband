@@ -35,6 +35,8 @@ class _HomeTabState extends State<HomeTab> {
   StreamSubscription<int>? _periodicSubscription;
   BluetoothCharacteristic? _incomingDataCharacteristic;
   BluetoothCharacteristic? _outgoingDataCharacteristic; // Added for sending commands
+  
+
 
   @override
   void initState() {
@@ -110,18 +112,8 @@ class _HomeTabState extends State<HomeTab> {
         print('❌ Could not find write characteristic');
       }
       
-      // Subscribe to notifications from the wristband
-      if (_incomingDataCharacteristic != null && 
-          _incomingDataCharacteristic!.properties.notify) {
-        await _incomingDataCharacteristic!.setNotifyValue(true);
-        print('✓ Enabled notifications on wristband');
-        
-        _dataSubscription = _incomingDataCharacteristic!.lastValueStream.listen((data) {
-          _handleIncomingSignal(data);
-        });
-      } else {
-        print('⚠️ Notify characteristic not available or does not support notifications');
-      }
+      // Note: BLE signal handling is now done in the main HomeScreen widget to prevent duplicates
+      // This widget will receive state updates from the parent HomeScreen
       
       // Listen for connection state changes
       _connectionSubscription = device.connectionState.listen((state) {
@@ -142,69 +134,34 @@ class _HomeTabState extends State<HomeTab> {
     }
   }
   
-  void _handleIncomingSignal(List<int> data) {
-    // Convert bytes to string
-    String signal = String.fromCharCodes(data);
-    print('Received signal from wristband: $signal');
-    
-    // Process the incoming signal according to the protocol
-    if (signal.startsWith('L')) {
-      // Battery level signal (e.g., L87)
-      String batteryLevel = signal.substring(1); // Remove 'L' prefix
-      print('Battery level: ${batteryLevel}%');
-      
-      // Update user context with battery information
-      final userContext = Provider.of<UserContext>(context, listen: false);
-      userContext.updateDeviceBatteryLevel('${batteryLevel}%');
-    } else if (signal.startsWith('R')) {
-      // Status report signal (e.g., RS)
-      String status = signal.substring(1); // Remove 'R' prefix
-      print('Status report: $status');
-      
-      // Update status in UI
-      setState(() {
-        _relationshipStatus = status;
-      });
-    } else {
-      // Process single character signals
-      switch (signal) {
-        case 'X': // SOS ALERT
-          _handleSosAlert();
-          break;
-        case 'B': // Button Press
-          _handleButtonPress();
-          break;
-        case 'O': // Power On
-          print('Wristband powered on');
-          setState(() {
-            _relationshipStatus = 'Powered on';
-          });
-          break;
-        case 'Z': // Power Off
-          print('Wristband powered off');
-          setState(() {
-            _relationshipStatus = 'Powered off';
-          });
-          break;
-        default:
-          print('Unknown signal: $signal');
-          break;
-      }
-    }
-  }
+// Note: Signal handling is now done in the main HomeScreen widget to prevent duplicates
+  // This widget relies on state updates from the parent HomeScreen
   
   void _handleSosAlert() {
     print('SOS ALERT received from wristband!');
+    
+    // Use the UserContext to check if SOS screen is already showing to prevent multiple instances
+    final userContext = Provider.of<UserContext>(context, listen: false);
+    if (userContext.isSosScreenShowing) {
+      print('SOS screen already showing, ignoring duplicate signal');
+      return;
+    }
+    
+    // Set the flag in UserContext to indicate SOS screen is showing
+    userContext.setIsSosScreenShowing(true);
+    
     // Trigger emergency response
     // Navigate to emergency SOS screen
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const SosAlertScreen()),
-    );
+    ).then((_) {
+      // Reset the flag when the screen is popped/closed
+      final userContext = Provider.of<UserContext>(context, listen: false);
+      userContext.setIsSosScreenShowing(false);
+    });
     
-    // Send confirmation back to wristband
-    final userContext = Provider.of<UserContext>(context, listen: false);
-    userContext.confirmWristbandSos();
+    // Note: Confirmation signal is now sent from SosAlertScreen after correct PIN is entered
   }
   
   void _handleButtonPress() {

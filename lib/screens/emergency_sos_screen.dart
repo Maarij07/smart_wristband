@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:audio_session/audio_session.dart' as audio_session_lib;
+import 'package:provider/provider.dart';
 import '../utils/colors.dart';
 import '../services/secure_storage_service.dart';
+import '../services/user_context.dart';
 
 class EmergencySOSManager {
   static AudioPlayer? _audioPlayer;
@@ -149,6 +151,13 @@ class _EmergencySOSScreenState extends State<EmergencySOSScreen> {
       if (enteredPin == _sosPin) {
         // Correct PIN - stop emergency alarm and close screen
         _stopEmergencyAlarm();
+        
+        // Send confirmation signal back to wristband using callback
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final userContext = Provider.of<UserContext>(context, listen: false);
+          userContext.confirmWristbandSos();
+        });
+        
         Navigator.pop(context); // Close the emergency screen
       } else {
         // Wrong PIN - show error but keep alarm running
@@ -310,9 +319,16 @@ class _EmergencySOSScreenState extends State<EmergencySOSScreen> {
                                   : null,
                             ),
                             onChanged: (value) {
-                              if (value.isNotEmpty && index < 3) {
+                              // Move to next field if current field is filled
+                              if (value.isNotEmpty && index < _controllers.length - 1) {
                                 FocusScope.of(context).requestFocus(_focusNodes[index + 1]);
                               }
+                              
+                              // Move to previous field if current field is cleared and empty
+                              if (value.isEmpty && index > 0) {
+                                FocusScope.of(context).requestFocus(_focusNodes[index - 1]);
+                              }
+                              
                               _onPinChanged();
                             },
                           ),

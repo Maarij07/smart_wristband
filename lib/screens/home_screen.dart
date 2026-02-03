@@ -174,6 +174,8 @@ class _HomeTabPageState extends State<_HomeTabPage> {
   BluetoothCharacteristic? _incomingDataCharacteristic;
   BluetoothCharacteristic? _outgoingDataCharacteristic; // Added for sending commands
   
+
+  
   @override
   void initState() {
     super.initState();
@@ -333,16 +335,34 @@ class _HomeTabPageState extends State<_HomeTabPage> {
   
   void _handleSosAlert() {
     print('SOS ALERT received from wristband!');
+    
+    // Use the UserContext to check if SOS screen is already showing to prevent multiple instances
+    final userContext = Provider.of<UserContext>(context, listen: false);
+    print('Current isSosScreenShowing value: ${userContext.isSosScreenShowing}');
+    
+    if (userContext.isSosScreenShowing) {
+      print('SOS screen already showing, ignoring duplicate signal');
+      return;
+    }
+    
+    // Set the flag in UserContext to indicate SOS screen is showing
+    userContext.setIsSosScreenShowing(true);
+    print('Set isSosScreenShowing to true');
+    
     // Trigger emergency response
     // Navigate to emergency SOS screen
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const SosAlertScreen()),
-    );
+    ).then((_) {
+      // Reset the flag when the screen is popped/closed
+      print('SOS screen Navigator.then() callback executed');
+      final userContext = Provider.of<UserContext>(context, listen: false);
+      userContext.setIsSosScreenShowing(false);
+      print('Reset isSosScreenShowing to false in Navigator callback');
+    });
     
-    // Send confirmation back to wristband
-    final userContext = Provider.of<UserContext>(context, listen: false);
-    userContext.confirmWristbandSos();
+    // Note: Confirmation signal is now sent from SosAlertScreen after correct PIN is entered
   }
   
   void _handleButtonPress() {
