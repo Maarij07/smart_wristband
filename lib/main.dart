@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'config/firebase_config.dart';
+import 'package:flutter/material.dart';
 import 'screens/splash_screen.dart';
 import 'services/user_context.dart';
+import 'services/ble_connection_provider.dart';
+import 'config/firebase_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,8 +16,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => UserContext(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => UserContext()),
+        ChangeNotifierProvider(create: (_) => BleConnectionProvider()),
+      ],
       child: MaterialApp(
         title: 'Smart Wristband',
         debugShowCheckedModeBanner: false,
