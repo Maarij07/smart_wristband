@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../utils/colors.dart';
+import '../services/messaging_provider.dart';
 import 'chat_screen.dart';
 
 class MessagesTab extends StatefulWidget {
@@ -11,53 +13,72 @@ class MessagesTab extends StatefulWidget {
 
 class _MessagesTabState extends State<MessagesTab> {
   @override
+  void initState() {
+    super.initState();
+    // Initialize messaging provider
+    Future.microtask(() {
+      context.read<MessagingProvider>().initialize();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Dummy chat data
-    final List<Map<String, dynamic>> dummyChats = [
-      {
-        'name': 'Emma Watson',
-        'lastMessage': 'Hey there! How are you doing?',
-        'time': '10:30 AM',
-        'unread': 2,
-        'avatar': 'E',
-      },
-      {
-        'name': 'Sophia Turner',
-        'lastMessage': 'Did you see the new movie?',
-        'time': 'Yesterday',
-        'unread': 0,
-        'avatar': 'S',
-      },
-      {
-        'name': 'Olivia Parker',
-        'lastMessage': 'Let\'s meet up this weekend!',
-        'time': 'Wed',
-        'unread': 1,
-        'avatar': 'O',
-      },
-    ];
-    
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Messages',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Messages',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              Consumer<MessagingProvider>(
+                builder: (context, messagingProvider, _) {
+                  return Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: messagingProvider.isConnected ? Colors.green : Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: ListView.separated(
-              itemCount: dummyChats.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final chat = dummyChats[index];
-                return _buildChatItem(chat);
+            child: Consumer<MessagingProvider>(
+              builder: (context, messagingProvider, _) {
+                final conversations = messagingProvider.conversations;
+                
+                if (conversations.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'No conversations yet. Start a chat!',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  );
+                }
+                
+                return ListView.separated(
+                  itemCount: conversations.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final conversation = conversations[index];
+                    return _buildChatItem(conversation);
+                  },
+                );
               },
             ),
           ),
@@ -65,8 +86,15 @@ class _MessagesTabState extends State<MessagesTab> {
       ),
     );
   }
-  
-  Widget _buildChatItem(Map<String, dynamic> chat) {
+  Widget _buildChatItem(Map<String, dynamic> conversation) {
+    final contactId = conversation['contactId'] as String;
+    final contactName = conversation['contactName'] as String;
+    final contactAvatar = conversation['contactAvatar'] as String;
+    final lastMessage = conversation['lastMessage'] as String;
+    final lastMessageTime = conversation['lastMessageTime'].toDate() as DateTime;
+    final unreadCount = conversation['unreadCount'] as int;
+    final isOnline = conversation['isOnline'] as bool;
+
     return InkWell(
       onTap: () {
         // Navigate to chat screen
@@ -74,8 +102,9 @@ class _MessagesTabState extends State<MessagesTab> {
           context,
           MaterialPageRoute(
             builder: (context) => ChatScreen(
-              contactName: chat['name'] as String,
-              contactAvatar: chat['avatar'] as String,
+              contactId: contactId,
+              contactName: contactName,
+              contactAvatar: contactAvatar,
             ),
           ),
         );
@@ -90,24 +119,42 @@ class _MessagesTabState extends State<MessagesTab> {
         ),
         child: Row(
           children: [
-            // Avatar
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: AppColors.black,
-                borderRadius: BorderRadius.circular(25),
-              ),
-              child: Center(
-                child: Text(
-                  chat['avatar'] as String,
-                  style: TextStyle(
-                    color: AppColors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
+            // Avatar with online indicator
+            Stack(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: AppColors.black,
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  child: Center(
+                    child: Text(
+                      contactAvatar,
+                      style: TextStyle(
+                        color: AppColors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                // Online indicator
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: isOnline ? Colors.green : AppColors.lightGray,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.surface, width: 2),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(width: 12),
             // Chat info
@@ -119,7 +166,7 @@ class _MessagesTabState extends State<MessagesTab> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        chat['name'] as String,
+                        contactName,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
@@ -127,7 +174,7 @@ class _MessagesTabState extends State<MessagesTab> {
                         ),
                       ),
                       Text(
-                        chat['time'] as String,
+                        _formatTime(lastMessageTime),
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
@@ -140,7 +187,7 @@ class _MessagesTabState extends State<MessagesTab> {
                     children: [
                       Expanded(
                         child: Text(
-                          chat['lastMessage'] as String,
+                          lastMessage.isEmpty ? 'No messages yet' : lastMessage,
                           style: TextStyle(
                             fontSize: 14,
                             color: AppColors.textSecondary,
@@ -149,15 +196,16 @@ class _MessagesTabState extends State<MessagesTab> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      if ((chat['unread'] as int) > 0)
+                      if (unreadCount > 0)
                         Container(
                           padding: const EdgeInsets.all(4),
+                          margin: const EdgeInsets.only(left: 8),
                           decoration: BoxDecoration(
                             color: AppColors.black,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
-                            (chat['unread'] as int).toString(),
+                            unreadCount.toString(),
                             style: TextStyle(
                               fontSize: 10,
                               color: AppColors.white,
@@ -174,5 +222,20 @@ class _MessagesTabState extends State<MessagesTab> {
         ),
       ),
     );
+  }
+
+  String _formatTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = DateTime(now.year, now.month, now.day - 1);
+    final messageDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
+
+    if (messageDate == today) {
+      return '${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+    } else if (messageDate == yesterday) {
+      return 'Yesterday';
+    } else {
+      return '${dateTime.month}/${dateTime.day}';
+    }
   }
 }

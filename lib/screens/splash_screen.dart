@@ -130,7 +130,7 @@ class _SplashScreenState extends State<SplashScreen>
                     
                     // App name
                     Text(
-                      'Smart WristBand',
+                      'Status Band',
                       style: TextStyle(
                         fontSize: 36,
                         fontWeight: FontWeight.w800,

@@ -5,9 +5,11 @@ import 'package:location/location.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'dart:convert';
+import 'dart:math';
 import '../utils/colors.dart';
 import '../services/user_context.dart';
 import '../services/location_service.dart';
+import '../services/route_service.dart';
 import 'sos_alert_screen.dart';
 
 class MapsTab extends StatefulWidget {
@@ -30,7 +32,64 @@ class MapsTab extends StatefulWidget {
 
 class _MapsTabState extends State<MapsTab> {
   Map<String, String>? _selectedUser;
-  BluetoothCharacteristic? _outgoingDataCharacteristic; // Added for sending commands
+  BluetoothCharacteristic? _outgoingDataCharacteristic;
+  
+  // Polyline data
+  List<LatLng> _polylineBlue = [];
+  List<LatLng> _polylinePink = [];
+  bool _isLoadingRoute = false;
+  String _routeInfo = '';
+  
+  // Fetch actual route from current location to marker
+  Future<void> _fetchRouteToMarker(LatLng markerLocation) async {
+    if (widget.currentLocation == null) {
+      print('❌ Current location not available');
+      return;
+    }
+    
+    setState(() {
+      _isLoadingRoute = true;
+      _routeInfo = 'Fetching route...';
+    });
+    
+    try {
+      LatLng userLocation = LatLng(
+        widget.currentLocation!.latitude!,
+        widget.currentLocation!.longitude!,
+      );
+      
+      // Fetch real route from OSRM
+      final (blueRoute, pinkRoute) = 
+          await RouteService.getOffsetRoutes(userLocation, markerLocation);
+      
+      // Get route info (distance, duration)
+      final routeInfo = await RouteService.getRouteInfo(userLocation, markerLocation);
+      
+      setState(() {
+        _polylineBlue = blueRoute;
+        _polylinePink = pinkRoute;
+        _routeInfo = '${routeInfo['distance_display']} • ${routeInfo['duration_display']}';
+        _isLoadingRoute = false;
+      });
+      
+      print('✅ Route fetched: ${_routeInfo}');
+    } catch (e) {
+      print('❌ Failed to fetch route: $e');
+      setState(() {
+        _isLoadingRoute = false;
+        _routeInfo = 'Route unavailable';
+      });
+    }
+  }
+  
+  // Method to clear polylines
+  void _clearPolylines() {
+    setState(() {
+      _polylineBlue = [];
+      _polylinePink = [];
+      _routeInfo = '';
+    });
+  }
   
   // Method to send nudge signal to wristband
   Future<void> _sendNudgeSignal() async {
@@ -278,6 +337,27 @@ class _MapsTabState extends State<MapsTab> {
                         urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                         userAgentPackageName: 'com.example.smart_wristband',
                       ),
+                      // Polylines to selected marker
+                      PolylineLayer(
+                        polylines: [
+                          // Blue polyline
+                          if (_polylineBlue.isNotEmpty)
+                            Polyline(
+                              points: _polylineBlue,
+                              strokeWidth: 3.0,
+                              color: Colors.blue,
+                              borderStrokeWidth: 0,
+                            ),
+                          // Pink polyline
+                          if (_polylinePink.isNotEmpty)
+                            Polyline(
+                              points: _polylinePink,
+                              strokeWidth: 3.0,
+                              color: Colors.pink,
+                              borderStrokeWidth: 0,
+                            ),
+                        ],
+                      ),
                       // 500m radius circle around current location
                       if (widget.currentLocation != null)
                         CircleLayer(
@@ -353,6 +433,13 @@ class _MapsTabState extends State<MapsTab> {
                                       'avatar': 'EW',
                                     };
                                   });
+                                  // Fetch real route to this marker
+                                  _fetchRouteToMarker(
+                                    LatLng(
+                                      widget.currentLocation!.latitude! + 0.003,
+                                      widget.currentLocation!.longitude!,
+                                    ),
+                                  );
                                 },
                                 child: Container(
                                   decoration: BoxDecoration(
@@ -388,6 +475,13 @@ class _MapsTabState extends State<MapsTab> {
                                       'avatar': 'ST',
                                     };
                                   });
+                                  // Fetch real route to this marker
+                                  _fetchRouteToMarker(
+                                    LatLng(
+                                      widget.currentLocation!.latitude!,
+                                      widget.currentLocation!.longitude! + 0.004,
+                                    ),
+                                  );
                                 },
                                 child: Container(
                                   decoration: BoxDecoration(
@@ -461,13 +555,24 @@ class _MapsTabState extends State<MapsTab> {
                                   ),
                                 ),
                                 const SizedBox(height: 4),
-                                Text(
-                                  _selectedUser!['age']! + ' years old',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: AppColors.textSecondary,
+                                if (_isLoadingRoute)
+                                  Text(
+                                    'Loading route...',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  )
+                                else
+                                  Text(
+                                    _routeInfo.isEmpty 
+                                      ? '${_selectedUser!['age']!} years old'
+                                      : _routeInfo,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.textSecondary,
+                                    ),
                                   ),
-                                ),
                               ],
                             ),
                           ),
@@ -487,6 +592,7 @@ class _MapsTabState extends State<MapsTab> {
                                 setState(() {
                                   _selectedUser = null;
                                 });
+                                _clearPolylines(); // Clear polylines when closing card
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.black,

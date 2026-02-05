@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'screens/splash_screen.dart';
 import 'services/user_context.dart';
 import 'services/ble_connection_provider.dart';
+import 'services/messaging_provider.dart';
 import 'config/firebase_config.dart';
 
 void main() async {
@@ -20,9 +21,10 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => UserContext()),
         ChangeNotifierProvider(create: (_) => BleConnectionProvider()),
+        ChangeNotifierProvider(create: (_) => MessagingProvider()),
       ],
       child: MaterialApp(
-        title: 'Smart Wristband',
+        title: 'Status Band',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           useMaterial3: true,

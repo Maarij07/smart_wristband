@@ -253,14 +253,6 @@ class _HomeTabPageState extends State<_HomeTabPage> {
     
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-            // Manual SOS trigger via Provider
-            bleProvider.triggerManualSos();
-        },
-        backgroundColor: Colors.red,
-        child: const Icon(Icons.sos, color: Colors.white),
-      ),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(

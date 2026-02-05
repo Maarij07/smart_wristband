@@ -189,7 +189,7 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
               _buildPermissionItem(
                 Icons.bluetooth,
                 'Bluetooth',
-                'To connect and communicate with your Smart Wristband',
+                'To connect and communicate with your Status Band',
                 _permissionResults['bluetooth'] ?? false,
               ),
               const SizedBox(height: 16),

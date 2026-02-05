@@ -44,6 +44,7 @@ dependencies:
   firebase_core: ^3.0.0
   firebase_auth: ^5.0.0
   cloud_firestore: ^5.0.0
+  firebase_database: ^11.0.0
   google_sign_in: ^6.1.6
   # Environment variables
   flutter_dotenv: ^5.1.0
@@ -68,6 +69,8 @@ dependencies:
   audio_session: ^0.1.25
   provider: ^6.1.5+1
   latlong2: ^0.9.1
+  flutter_polyline_points: ^2.1.0
+  http: ^1.1.0
 
 dev_dependencies:
   flutter_test:

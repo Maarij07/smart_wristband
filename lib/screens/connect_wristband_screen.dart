@@ -275,7 +275,7 @@ class _ConnectWristbandScreenState extends State<ConnectWristbandScreen>
           id: device.remoteId.toString(),
           name: device.platformName.isEmpty ? 'Unknown Device' : device.platformName,
           platformName: device.platformName,
-          deviceType: 'Smart Wristband',
+          deviceType: 'Status Band',
           connectedAt: DateTime.now(),
           isConnected: true,
         ));
@@ -384,7 +384,7 @@ class _ConnectWristbandScreenState extends State<ConnectWristbandScreen>
 
                       // Subtitle
                       Text(
-                        'Scan nearby Bluetooth devices to find and connect to your Smart Wristband',
+                        'Scan nearby Bluetooth devices to find and connect to your Status Band',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w400,

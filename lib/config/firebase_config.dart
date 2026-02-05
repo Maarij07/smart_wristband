@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 class FirebaseConfig {
   static Future<void> initializeApp() async {
@@ -21,6 +22,7 @@ class FirebaseConfig {
     final storageBucket = dotenv.env['FIREBASE_STORAGE_BUCKET'] ?? '';
     final messagingSenderId = dotenv.env['FIREBASE_MESSAGING_SENDER_ID'] ?? '';
     final measurementId = dotenv.env['FIREBASE_MEASUREMENT_ID'] ?? '';
+    final databaseURL = dotenv.env['FIREBASE_DATABASE_URL'] ?? '';
 
     // Check if we have the required values
     if (apiKey.isEmpty || appId.isEmpty || authDomain.isEmpty || projectId.isEmpty) {
@@ -38,6 +40,7 @@ class FirebaseConfig {
           storageBucket: storageBucket,
           messagingSenderId: messagingSenderId,
           measurementId: measurementId,
+          databaseURL: databaseURL.isNotEmpty ? databaseURL : null,
         ),
       );
     }
@@ -45,4 +48,5 @@ class FirebaseConfig {
 
   static FirebaseAuth get auth => FirebaseAuth.instance;
   static FirebaseFirestore get firestore => FirebaseFirestore.instance;
+  static FirebaseDatabase get realtimeDb => FirebaseDatabase.instance;
 }
