@@ -34,6 +34,8 @@ class User {
 
   factory User.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    print('🔍 Loading user from Firestore:');
+    print('   - profilePicture field: ${data['profilePicture']}');
     return User(
       id: doc.id,
       email: data['email'] ?? '',
@@ -242,6 +244,7 @@ class UserContext extends ChangeNotifier {
   Future<void> updateUserProfile({
     String? phoneNumber,
     String? bio,
+    String? profilePicture,
     String? relationshipStatus,
     Map<String, String>? socialMediaLinks,
     Map<String, String>? privacySettings,
@@ -253,7 +256,7 @@ class UserContext extends ChangeNotifier {
         email: _user!.email,
         name: _user!.name,
         phoneNumber: phoneNumber ?? _user!.phoneNumber,
-        profilePicture: _user!.profilePicture,
+        profilePicture: profilePicture ?? _user!.profilePicture,
         bio: bio ?? _user!.bio,
         relationshipStatus: relationshipStatus ?? _user!.relationshipStatus,
         socialMediaLinks: socialMediaLinks ?? _user!.socialMediaLinks,
@@ -269,6 +272,7 @@ class UserContext extends ChangeNotifier {
         uid: _user!.id,
         phoneNumber: phoneNumber,
         bio: bio,
+        profilePicture: profilePicture,
         relationshipStatus: relationshipStatus,
         socialMediaLinks: socialMediaLinks,
         privacySettings: privacySettings,

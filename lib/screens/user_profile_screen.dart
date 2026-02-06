@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../utils/colors.dart';
 import '../services/user_context.dart';
+import '../services/profile_service.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 
 class UserProfileScreen extends StatefulWidget {
@@ -12,10 +14,70 @@ class UserProfileScreen extends StatefulWidget {
 }
 
 class _UserProfileScreenState extends State<UserProfileScreen> {
+  final ProfileService _profileService = ProfileService();
+  bool _isUploadingImage = false;
+
+  Future<void> _handleProfilePictureUpload() async {
+    final userContext = Provider.of<UserContext>(context, listen: false);
+    final userId = firebase_auth.FirebaseAuth.instance.currentUser?.uid;
+    
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('User not authenticated'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    setState(() => _isUploadingImage = true);
+
+    try {
+      final photoUrl = await _profileService.updateProfilePicture(userId);
+      
+      if (photoUrl != null) {
+        print('📸 Photo URL received: $photoUrl');
+        
+        // Update UserContext with new photo URL
+        await userContext.updateUserProfile(profilePicture: photoUrl);
+        print('✅ UserContext updated');
+        
+        // Reload user data from Firestore to ensure we have the latest
+        await userContext.loadUserData(userId);
+        print('✅ User data reloaded from Firestore');
+        
+        if (mounted) {
+          // Force UI refresh
+          setState(() {});
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Profile picture updated successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to upload: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingImage = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final userContext = Provider.of<UserContext>(context);
     final user = userContext.user;
+    
+    print('🖼️ UserProfileScreen build - profilePicture: ${user?.profilePicture}');
     
     String _getUserInitials(String fullName) {
       if (fullName.isEmpty) return 'U';
@@ -66,85 +128,107 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     mainAxisAlignment: MainAxisAlignment.end,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Stack(
-                        children: [
-                          Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.surface,
-                              border: Border.all(color: AppColors.white, width: 3),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Color.fromRGBO(0, 0, 0, 0.1),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 5),
-                                ),
-                              ],
-                            ),
-                            child: user?.profilePicture != null && user?.profilePicture!.isNotEmpty == true
-                              ? ClipOval(
-                                  child: Image.network(
-                                    user!.profilePicture!,
-                                    width: 80,
-                                    height: 80,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      // If image fails to load, show initial instead
-                                      return ClipOval(
-                                        child: Container(
-                                          color: AppColors.black,
-                                          child: Center(
-                                            child: Text(
-                                              _getUserInitials(user.name),
-                                              style: TextStyle(
-                                                color: AppColors.white,
-                                                fontSize: 28,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    },
+                      GestureDetector(
+                        onTap: _isUploadingImage ? null : _handleProfilePictureUpload,
+                        child: Stack(
+                          children: [
+                            Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppColors.surface,
+                                border: Border.all(color: AppColors.white, width: 3),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Color.fromRGBO(0, 0, 0, 0.1),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 5),
                                   ),
-                                )
-                              : ClipOval(
-                                  child: Container(
-                                    color: AppColors.black,
-                                    child: Center(
-                                      child: Text(
-                                        _getUserInitials(user?.name ?? 'User'),
-                                        style: TextStyle(
+                                ],
+                              ),
+                              child: _isUploadingImage
+                                ? ClipOval(
+                                    child: Container(
+                                      color: AppColors.black.withOpacity(0.7),
+                                      child: Center(
+                                        child: CircularProgressIndicator(
                                           color: AppColors.white,
-                                          fontSize: 28,
-                                          fontWeight: FontWeight.w600,
+                                          strokeWidth: 2,
                                         ),
                                       ),
                                     ),
-                                  ),
+                                  )
+                                : user?.profilePicture != null && user?.profilePicture!.isNotEmpty == true
+                                  ? ClipOval(
+                                      child: CachedNetworkImage(
+                                        key: ValueKey(user!.profilePicture), // Force rebuild when URL changes
+                                        imageUrl: user!.profilePicture!,
+                                        width: 80,
+                                        height: 80,
+                                        fit: BoxFit.cover,
+                                        placeholder: (context, url) => Container(
+                                          color: AppColors.black.withOpacity(0.3),
+                                          child: Center(
+                                            child: CircularProgressIndicator(
+                                              color: AppColors.white,
+                                              strokeWidth: 2,
+                                            ),
+                                          ),
+                                        ),
+                                        errorWidget: (context, url, error) {
+                                          return Container(
+                                            color: AppColors.black,
+                                            child: Center(
+                                              child: Text(
+                                                _getUserInitials(user.name),
+                                                style: TextStyle(
+                                                  color: AppColors.white,
+                                                  fontSize: 28,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    )
+                                  : ClipOval(
+                                      child: Container(
+                                        color: AppColors.black,
+                                        child: Center(
+                                          child: Text(
+                                            _getUserInitials(user?.name ?? 'User'),
+                                            style: TextStyle(
+                                              color: AppColors.white,
+                                              fontSize: 28,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                width: 24,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  color: AppColors.white,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: AppColors.black, width: 2),
                                 ),
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: Container(
-                              width: 24,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: AppColors.white,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: AppColors.black, width: 2),
-                              ),
-                              child: Icon(
-                                Icons.edit,
-                                size: 12,
-                                color: AppColors.black,
+                                child: Icon(
+                                  _isUploadingImage ? Icons.hourglass_empty : Icons.camera_alt,
+                                  size: 12,
+                                  color: AppColors.black,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                       SizedBox(height: 12),
                       Text(

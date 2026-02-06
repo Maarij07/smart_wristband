@@ -105,6 +105,7 @@ class FirebaseService {
     required String uid,
     String? phoneNumber,
     String? bio,
+    String? profilePicture,
     String? relationshipStatus,
     Map<String, String>? socialMediaLinks,
     Map<String, String>? privacySettings,
@@ -113,6 +114,7 @@ class FirebaseService {
       await _firestore.collection('users').doc(uid).update({
         if (phoneNumber != null) 'phoneNumber': phoneNumber,
         if (bio != null) 'bio': bio,
+        if (profilePicture != null) 'profilePicture': profilePicture,
         if (relationshipStatus != null) 'relationshipStatus': relationshipStatus,
         if (socialMediaLinks != null) 'socialMediaLinks': socialMediaLinks,
         if (privacySettings != null) 'privacySettings': privacySettings,
