@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:location/location.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'dart:async';
 import 'dart:convert';
 import '../utils/colors.dart';
@@ -55,20 +56,46 @@ class _HomeScreenState extends State<HomeScreen> {
     _locationService.initialize();
     // Initialize map once
     _initializeMapOnce();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeUserContext();
+    });
+  }
+
+  Future<void> _initializeUserContext() async {
+    final userContext = context.read<UserContext>();
+    final uid = firebase_auth.FirebaseAuth.instance.currentUser?.uid;
+
+    if (uid == null) {
+      return;
+    }
+
+    if (userContext.user == null) {
+      await userContext.loadUserData(uid, forceRefresh: true);
+    }
+
+    // Sync BLE provider with any already-connected device from UserContext
+    if (userContext.connectedDevice != null && mounted) {
+      final bleProvider = context.read<BleConnectionProvider>();
+      await bleProvider.initializeConnectionFromDevice(userContext.connectedDevice!);
+    }
   }
   
   Future<void> _initializeMapOnce() async {
     if (_isMapInitialized) return; // Already initialized
-    
+
+    setState(() {
+      _isMapInitialized = true; // Render map immediately, update location when ready
+    });
+
     // Get location from service (cached or fresh)
     final location = await _locationService.getCurrentLocation();
-    
+
     if (location != null && mounted) {
       setState(() {
         _currentLocation = location;
-        _isMapInitialized = true;
       });
-      
+
       // Move map to current location after widget is rendered
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _isMapInitialized) {
@@ -83,10 +110,6 @@ class _HomeScreenState extends State<HomeScreen> {
             print('Map controller not ready yet: $e');
           }
         }
-      });
-    } else {
-      setState(() {
-        _isMapInitialized = true; // Mark as initialized even if no location
       });
     }
   }

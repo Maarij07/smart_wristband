@@ -29,6 +29,32 @@ class BleConnectionProvider extends ChangeNotifier {
   BluetoothDevice? get device => _device;
   bool get isSosScreenActive => _isSosScreenActive;
   
+  /// Initialize connection state from an already-connected device
+  Future<void> initializeConnectionFromDevice(BluetoothDevice connectedDevice) async {
+    try {
+      _device = connectedDevice;
+      
+      // Listen to connection state changes
+      _connectionSubscription = _device!.connectionState.listen(
+        _handleConnectionStateChange,
+        onError: (e) => debugPrint('❌ Connection state error: $e'),
+      );
+      
+      // Check current connection state
+      final currentState = await _device!.connectionState.first;
+      _connectionState = currentState;
+      
+      if (_connectionState == BluetoothConnectionState.connected) {
+        await _setupCharacteristics();
+        debugPrint('✅ Provider synchronized with connected device');
+      }
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('❌ Failed to initialize connection: $e');
+    }
+  }
+  
   /// Connect to a device and setup listeners
   Future<bool> connectToDevice(String deviceId) async {
     try {

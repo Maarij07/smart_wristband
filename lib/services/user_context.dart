@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_service.dart';
 import 'dart:convert';
 
@@ -9,6 +10,7 @@ class User {
   final String id;
   final String email;
   final String name;
+  final String? age;
   final String? phoneNumber;
   final String? profilePicture;
   final String? bio;
@@ -22,6 +24,7 @@ class User {
     required this.id,
     required this.email,
     required this.name,
+    this.age,
     this.phoneNumber,
     this.profilePicture,
     this.bio,
@@ -33,26 +36,35 @@ class User {
   });
 
   factory User.fromFirestore(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    final data = Map<String, dynamic>.from(doc.data() as Map);
     print('🔍 Loading user from Firestore:');
     print('   - profilePicture field: ${data['profilePicture']}');
     return User(
       id: doc.id,
       email: data['email'] ?? '',
       name: data['name'] ?? '',
+      age: data['age']?.toString(),
       phoneNumber: data['phoneNumber'],
-      profilePicture: data['profilePicture'],
+      profilePicture: data['profilePicture'] ?? data['photoUrl'],
       bio: data['bio'],
       relationshipStatus: data['relationshipStatus'],
-      socialMediaLinks: data['socialMediaLinks'] is Map<String, dynamic> 
-          ? data['socialMediaLinks'].map((key, value) => MapEntry(key, value.toString()))
-          : null,
-      privacySettings: data['privacySettings'] is Map<String, dynamic> 
-          ? data['privacySettings'].map((key, value) => MapEntry(key, value.toString()))
-          : null,
+      socialMediaLinks: _parseStringMap(data['socialMediaLinks']),
+      privacySettings: _parseStringMap(data['privacySettings']),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       lastLoginAt: (data['lastLoginAt'] as Timestamp?)?.toDate(),
     );
+  }
+
+  static Map<String, String>? _parseStringMap(dynamic raw) {
+    if (raw is Map) {
+      return raw.map(
+        (key, value) => MapEntry(
+          key.toString(),
+          value?.toString() ?? '',
+        ),
+      );
+    }
+    return null;
   }
 }
 
@@ -89,6 +101,8 @@ class Device {
 }
 
 class UserContext extends ChangeNotifier {
+  static const String _profilePictureCacheKeyPrefix = 'cached_profile_picture_url_';
+
   User? _user;
   Device? _connectedDevice;
   bool _isLoading = false;
@@ -155,7 +169,11 @@ class UserContext extends ChangeNotifier {
   }
   
   // Load user data from Firebase
-  Future<void> loadUserData(String uid) async {
+  Future<void> loadUserData(String uid, {bool forceRefresh = false}) async {
+    if (!forceRefresh && _user != null && _user!.id == uid) {
+      return;
+    }
+
     print('Starting to load user data for UID: $uid');
     try {
       final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
@@ -164,15 +182,18 @@ class UserContext extends ChangeNotifier {
         final user = User.fromFirestore(doc);
         print('User data from Firestore: name=${user.name}, email=${user.email}');
         _user = user;
+        await _cacheProfilePicture(uid, _user!.profilePicture);
         notifyListeners();
         print('User data loaded successfully: ${user.name}, ${user.email}');
       } else {
         print('User document not found for UID: $uid');
         // Create a default user if not found
+        final cachedProfilePicture = await _getCachedProfilePicture(uid);
         _user = User(
           id: uid,
           email: 'user2@example.com',
           name: 'User',
+          profilePicture: cachedProfilePicture,
           createdAt: DateTime.now(),
         );
         notifyListeners();
@@ -181,15 +202,64 @@ class UserContext extends ChangeNotifier {
     } catch (e) {
       print('Error loading user data: $e');
       // Create a default user on error
+      final cachedProfilePicture = await _getCachedProfilePicture(uid);
       _user = User(
         id: uid,
         email: 'user2@example.com',
         name: 'User',
+        profilePicture: cachedProfilePicture,
         createdAt: DateTime.now(),
       );
       notifyListeners();
       print('Created default user due to error');
     }
+  }
+
+  Future<void> loadCachedProfilePicture(String uid) async {
+    final cachedProfilePicture = await _getCachedProfilePicture(uid);
+    if (cachedProfilePicture == null) {
+      return;
+    }
+
+    if (_user == null) {
+      return;
+    }
+
+    if (_user!.profilePicture == cachedProfilePicture) {
+      return;
+    }
+
+    _user = User(
+      id: _user!.id,
+      email: _user!.email,
+      name: _user!.name,
+      phoneNumber: _user!.phoneNumber,
+      profilePicture: cachedProfilePicture,
+      bio: _user!.bio,
+      relationshipStatus: _user!.relationshipStatus,
+      socialMediaLinks: _user!.socialMediaLinks,
+      privacySettings: _user!.privacySettings,
+      createdAt: _user!.createdAt,
+      lastLoginAt: _user!.lastLoginAt,
+    );
+    notifyListeners();
+  }
+
+  Future<String?> _getCachedProfilePicture(String uid) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('$_profilePictureCacheKeyPrefix$uid');
+  }
+
+  Future<void> _cacheProfilePicture(String uid, String? url) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = '$_profilePictureCacheKeyPrefix$uid';
+
+    if (url == null || url.isEmpty) {
+      await prefs.remove(key);
+      return;
+    }
+
+    await prefs.setString(key, url);
   }
 
   // Get user health metrics from context or device
@@ -242,6 +312,7 @@ class UserContext extends ChangeNotifier {
 
   // Update user profile in both context and Firebase
   Future<void> updateUserProfile({
+    String? age,
     String? phoneNumber,
     String? bio,
     String? profilePicture,
@@ -255,6 +326,7 @@ class UserContext extends ChangeNotifier {
         id: _user!.id,
         email: _user!.email,
         name: _user!.name,
+        age: age ?? _user!.age,
         phoneNumber: phoneNumber ?? _user!.phoneNumber,
         profilePicture: profilePicture ?? _user!.profilePicture,
         bio: bio ?? _user!.bio,
@@ -265,11 +337,16 @@ class UserContext extends ChangeNotifier {
         lastLoginAt: _user!.lastLoginAt,
       );
       
+      if (profilePicture != null) {
+        await _cacheProfilePicture(_user!.id, _user!.profilePicture);
+      }
+
       notifyListeners();
       
       // Update in Firebase
       await FirebaseService.updateUserProfile(
         uid: _user!.id,
+        age: age,
         phoneNumber: phoneNumber,
         bio: bio,
         profilePicture: profilePicture,

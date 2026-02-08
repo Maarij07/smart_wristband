@@ -74,6 +74,7 @@ class FirebaseService {
     required String uid,
     required String email,
     required String name,
+    String? age,
     String? phoneNumber,
     String? bio,
     String? relationshipStatus,
@@ -85,6 +86,7 @@ class FirebaseService {
         'uid': uid,
         'email': email,
         'name': name,
+        'age': age,
         'phoneNumber': phoneNumber,
         'bio': bio,
         'relationshipStatus': relationshipStatus ?? 'Single',
@@ -103,6 +105,7 @@ class FirebaseService {
 
   static Future<void> updateUserProfile({
     required String uid,
+    String? age,
     String? phoneNumber,
     String? bio,
     String? profilePicture,
@@ -112,6 +115,7 @@ class FirebaseService {
   }) async {
     try {
       await _firestore.collection('users').doc(uid).update({
+        if (age != null) 'age': age,
         if (phoneNumber != null) 'phoneNumber': phoneNumber,
         if (bio != null) 'bio': bio,
         if (profilePicture != null) 'profilePicture': profilePicture,

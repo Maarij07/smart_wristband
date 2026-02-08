@@ -4,7 +4,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../utils/colors.dart';
 import '../services/user_context.dart';
 import '../services/profile_service.dart';
+import '../services/auth_service.dart';
+import '../services/firebase_service.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'signin_screen.dart';
+import 'support_pages.dart';
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({super.key});
@@ -39,10 +43,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         // Update UserContext with new photo URL
         await userContext.updateUserProfile(profilePicture: photoUrl);
         print('✅ UserContext updated');
-        
-        // Reload user data from Firestore to ensure we have the latest
-        await userContext.loadUserData(userId);
-        print('✅ User data reloaded from Firestore');
         
         if (mounted) {
           // Force UI refresh
@@ -269,22 +269,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       
                       SizedBox(height: 16),
                                           
-                      // Account Settings Section
-                      _buildSectionCard('Account Settings', [
-                        _buildSettingsRow('Privacy Settings', Icons.visibility, () {}),
-                        _buildSettingsRow('Notification Settings', Icons.notifications, () {}),
-                        _buildSettingsRow('Security Settings', Icons.lock, () {}),
-                        _buildSettingsRow('Connected Devices', Icons.devices_other, () {}),
-                      ]),
-                      
-                      SizedBox(height: 16),
-                                          
                       // Support Section
                       _buildSectionCard('Support', [
-                        _buildSettingsRow('FAQs', Icons.help_outline, () {}),
-                        _buildSettingsRow('Terms & Conditions', Icons.article_outlined, () {}),
-                        _buildSettingsRow('Privacy Policy', Icons.privacy_tip_outlined, () {}),
-                        _buildSettingsRow('Contact Us', Icons.contact_support_outlined, () {}),
+                        _buildSettingsRow('FAQs', Icons.help_outline, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FAQsPage()))),
+                        _buildSettingsRow('Terms & Conditions', Icons.article_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsAndConditionsPage()))),
+                        _buildSettingsRow('Privacy Policy', Icons.privacy_tip_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyPolicyPage()))),
+                        _buildSettingsRow('Contact Us', Icons.contact_support_outlined, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ContactUsPage()))),
                       ]),
                       
                       SizedBox(height: 16),
@@ -451,9 +441,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   
   void _performSignOut() async {
     try {
-      await firebase_auth.FirebaseAuth.instance.signOut();
+      await FirebaseService.signOut();
+      await AuthService.logout();
       if (mounted) {
-        Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+        Provider.of<UserContext>(context, listen: false).clearUser();
+      }
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const SignInScreen()),
+          (route) => false,
+        );
       }
     } catch (e) {
       print('Error signing out: $e');

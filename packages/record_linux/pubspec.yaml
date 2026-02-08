@@ -1,0 +1,19 @@
+name: record_linux
+version: 0.7.2+local
+description: "Local override for record_linux to align with record_platform_interface 1.5.0."
+homepage: "https://pub.dev/packages/record_linux"
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  record_platform_interface: ^1.5.0
+
+flutter:
+  plugin:
+    implements: record
+    platforms:
+      linux:
+        pluginClass: RecordLinux

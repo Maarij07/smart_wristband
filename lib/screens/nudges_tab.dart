@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../utils/colors.dart';
+import '../services/nudges_service.dart';
+import '../services/user_context.dart';
+import '../services/firestore_messaging_service.dart';
+import 'chat_screen.dart';
 
 class NudgesTab extends StatefulWidget {
   const NudgesTab({super.key});
@@ -10,6 +15,8 @@ class NudgesTab extends StatefulWidget {
 
 class _NudgesTabState extends State<NudgesTab> with TickerProviderStateMixin {
   late TabController _tabController;
+  final NudgesService _nudgesService = NudgesService();
+  final FirestoreMessagingService _messagingService = FirestoreMessagingService();
 
   @override
   void initState() {
@@ -69,11 +76,14 @@ class _NudgesTabState extends State<NudgesTab> with TickerProviderStateMixin {
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: const [
+              children: [
                 // Received nudges tab
-                _ReceivedNudgesTab(),
+                _ReceivedNudgesTab(
+                  nudgesService: _nudgesService,
+                  messagingService: _messagingService,
+                ),
                 // Sent nudges tab
-                _SentNudgesTab(),
+                _SentNudgesTab(nudgesService: _nudgesService),
               ],
             ),
           ),
@@ -84,7 +94,13 @@ class _NudgesTabState extends State<NudgesTab> with TickerProviderStateMixin {
 }
 
 class _ReceivedNudgesTab extends StatelessWidget {
-  const _ReceivedNudgesTab();
+  final NudgesService nudgesService;
+  final FirestoreMessagingService messagingService;
+
+  const _ReceivedNudgesTab({
+    required this.nudgesService,
+    required this.messagingService,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -103,63 +119,130 @@ class _ReceivedNudgesTab extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: ListView.builder(
-              itemCount: 4, // Sample received nudges
-              itemBuilder: (context, index) {
-                final users = [
-                  {'name': 'Sarah Johnson', 'status': 'Online now'},
-                  {'name': 'Michael Chen', 'status': 'Active 2h ago'},
-                  {'name': 'Emma Wilson', 'status': 'Online now'},
-                  {'name': 'David Brown', 'status': 'Active 30m ago'},
-                ];
+            child: StreamBuilder<List<NudgeItem>>(
+              stream: nudgesService.getReceivedNudgesStream(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'No received nudges yet',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  );
+                }
 
-                return Card(
-                  color: AppColors.surfaceVariant,
-                  child: ListTile(
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.divider, width: 1),
-                      ),
-                      child: Icon(
-                        Icons.person,
-                        color: AppColors.black,
-                        size: 18,
-                      ),
-                    ),
-                    title: Text(
-                      users[index]['name']!,
-                      style: TextStyle(color: AppColors.textPrimary),
-                    ),
-                    subtitle: Text(
-                      users[index]['status']!,
-                      style: TextStyle(color: AppColors.textSecondary),
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            Icons.chat,
+                final nudges = snapshot.data!;
+                return ListView.separated(
+                  itemCount: nudges.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final nudge = nudges[index];
+                    final isMatched = nudge.status == 'matched';
+
+                    return Card(
+                      color: AppColors.surfaceVariant,
+                      child: ListTile(
+                        leading: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppColors.divider, width: 1),
+                          ),
+                          child: Icon(
+                            Icons.person,
                             color: AppColors.black,
-                            size: 20,
+                            size: 18,
                           ),
-                          onPressed: () {},
                         ),
-                        IconButton(
-                          icon: Icon(
-                            Icons.favorite_border,
-                            color: AppColors.textSecondary,
-                            size: 20,
-                          ),
-                          onPressed: () {},
+                        title: Text(
+                          nudge.name,
+                          style: TextStyle(color: AppColors.textPrimary),
                         ),
-                      ],
-                    ),
-                  ),
+                        subtitle: Text(
+                          isMatched ? 'Liked back' : 'Sent you a nudge',
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                Icons.chat,
+                                color: isMatched
+                                    ? AppColors.black
+                                    : AppColors.textSecondary,
+                                size: 20,
+                              ),
+                              onPressed: isMatched
+                                  ? () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => ChatScreen(
+                                            contactId: nudge.userId,
+                                            contactName: nudge.name,
+                                            contactAvatar:
+                                                _getInitials(nudge.name),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  : null,
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                isMatched
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                color: isMatched
+                                    ? Colors.red
+                                    : AppColors.textSecondary,
+                                size: 20,
+                              ),
+                              onPressed: isMatched
+                                  ? null
+                                  : () async {
+                                      final currentUser =
+                                          context.read<UserContext>().user;
+                                      if (currentUser == null) {
+                                        return;
+                                      }
+
+                                      await nudgesService.markMatched(
+                                        otherUserId: nudge.userId,
+                                        otherUserName: nudge.name,
+                                        otherUserProfilePicture:
+                                            nudge.profilePicture,
+                                        currentUserName: currentUser.name,
+                                        currentUserProfilePicture:
+                                            currentUser.profilePicture,
+                                      );
+
+                                      await messagingService
+                                          .createOrStartConversation(
+                                        nudge.userId,
+                                        nudge.name,
+                                        '',
+                                      );
+
+                                      await messagingService
+                                          .setNewMatchForBothUsers(
+                                        userId: currentUser.id,
+                                        contactId: nudge.userId,
+                                      );
+                                    },
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
@@ -168,10 +251,26 @@ class _ReceivedNudgesTab extends StatelessWidget {
       ),
     );
   }
+
+  String _getInitials(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      return 'U';
+    }
+
+    final parts = trimmed.split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+
+    return parts[0][0].toUpperCase();
+  }
 }
 
 class _SentNudgesTab extends StatelessWidget {
-  const _SentNudgesTab();
+  final NudgesService nudgesService;
+
+  const _SentNudgesTab({required this.nudgesService});
 
   @override
   Widget build(BuildContext context) {
@@ -190,55 +289,72 @@ class _SentNudgesTab extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: ListView.builder(
-              itemCount: 3, // Sample sent nudges
-              itemBuilder: (context, index) {
-                final users = [
-                  {'name': 'Alex Thompson', 'status': 'Pending response'},
-                  {'name': 'Jessica Lee', 'status': 'Liked back'},
-                  {'name': 'Ryan Miller', 'status': 'Pending response'},
-                ];
-
-                return Card(
-                  color: AppColors.surfaceVariant,
-                  child: ListTile(
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.divider, width: 1),
-                      ),
-                      child: Icon(
-                        Icons.person,
-                        color: AppColors.black,
-                        size: 18,
-                      ),
-                    ),
-                    title: Text(
-                      users[index]['name']!,
-                      style: TextStyle(color: AppColors.textPrimary),
-                    ),
-                    subtitle: Text(
-                      users[index]['status']!,
+            child: StreamBuilder<List<NudgeItem>>(
+              stream: nudgesService.getSentNudgesStream(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'No sent nudges yet',
                       style: TextStyle(
-                        color: users[index]['status'] == 'Liked back'
-                            ? AppColors.black
-                            : AppColors.textSecondary,
-                        fontWeight: users[index]['status'] == 'Liked back'
-                            ? FontWeight.w500
-                            : FontWeight.w400,
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
                       ),
                     ),
-                    trailing: users[index]['status'] == 'Liked back'
-                        ? Icon(Icons.favorite, color: Colors.red, size: 20)
-                        : Icon(
-                            Icons.access_time,
-                            color: AppColors.textSecondary,
-                            size: 20,
+                  );
+                }
+
+                final nudges = snapshot.data!;
+                return ListView.separated(
+                  itemCount: nudges.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final nudge = nudges[index];
+                    final isMatched = nudge.status == 'matched';
+
+                    return Card(
+                      color: AppColors.surfaceVariant,
+                      child: ListTile(
+                        leading: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppColors.divider, width: 1),
                           ),
-                  ),
+                          child: Icon(
+                            Icons.person,
+                            color: AppColors.black,
+                            size: 18,
+                          ),
+                        ),
+                        title: Text(
+                          nudge.name,
+                          style: TextStyle(color: AppColors.textPrimary),
+                        ),
+                        subtitle: Text(
+                          isMatched ? 'Liked back' : 'Pending response',
+                          style: TextStyle(
+                            color: isMatched
+                                ? AppColors.black
+                                : AppColors.textSecondary,
+                            fontWeight: isMatched
+                                ? FontWeight.w500
+                                : FontWeight.w400,
+                          ),
+                        ),
+                        trailing: isMatched
+                            ? Icon(Icons.favorite, color: Colors.red, size: 20)
+                            : Icon(
+                                Icons.access_time,
+                                color: AppColors.textSecondary,
+                                size: 20,
+                              ),
+                      ),
+                    );
+                  },
                 );
               },
             ),

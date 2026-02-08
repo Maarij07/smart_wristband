@@ -45,10 +45,13 @@ class FirestoreMessagingService {
           'contactId': contactId,
           'contactName': contactData['name'] ?? 'Unknown',
           'contactAvatar': contactData['avatar'] ?? '',
+          'contactProfilePicture':
+              contactData['profilePicture'] ?? contactData['photoUrl'] ?? '',
           'lastMessage': conversationData['lastMessage'] ?? '',
           'lastMessageTime': conversationData['lastMessageTime'] ?? Timestamp.now(),
           'unreadCount': conversationData['unreadCount'] ?? 0,
           'isOnline': contactData['isOnline'] ?? false,
+          'isNewMatch': conversationData['isNewMatch'] ?? false,
         });
       }
 
@@ -99,6 +102,7 @@ class FirestoreMessagingService {
         'text': messageText.trim(),
         'timestamp': timestamp,
         'status': 'sent', // sent, delivered, read
+        'type': 'text',
       });
 
       // Update last message for sender
@@ -125,6 +129,60 @@ class FirestoreMessagingService {
       }, SetOptions(merge: true));
     } catch (e) {
       throw Exception('Failed to send message: $e');
+    }
+  }
+
+  Future<void> sendAttachmentMessage({
+    required String contactId,
+    required String attachmentId,
+    required String mediaType,
+  }) async {
+    if (currentUserId.isEmpty) {
+      throw Exception('Invalid user');
+    }
+
+    final conversationId = _getConversationId(currentUserId, contactId);
+    final timestamp = Timestamp.now();
+    final label = _attachmentLabel(mediaType);
+
+    try {
+      await _firestore
+          .collection('conversations')
+          .doc(conversationId)
+          .collection('messages')
+          .add({
+        'senderId': currentUserId,
+        'recipientId': contactId,
+        'text': '',
+        'timestamp': timestamp,
+        'status': 'sent',
+        'type': 'attachment',
+        'attachmentId': attachmentId,
+        'mediaType': mediaType,
+      });
+
+      await _firestore
+          .collection('users')
+          .doc(currentUserId)
+          .collection('conversations')
+          .doc(contactId)
+          .set({
+        'lastMessage': label,
+        'lastMessageTime': timestamp,
+      }, SetOptions(merge: true));
+
+      await _firestore
+          .collection('users')
+          .doc(contactId)
+          .collection('conversations')
+          .doc(currentUserId)
+          .set({
+        'lastMessage': label,
+        'lastMessageTime': timestamp,
+        'unreadCount': FieldValue.increment(1),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      throw Exception('Failed to send attachment: $e');
     }
   }
 
@@ -194,6 +252,7 @@ class FirestoreMessagingService {
         'lastMessage': '',
         'lastMessageTime': Timestamp.now(),
         'unreadCount': 0,
+        'isNewMatch': false,
       }, SetOptions(merge: true));
 
       // Initialize conversation for contact user
@@ -206,9 +265,54 @@ class FirestoreMessagingService {
         'lastMessage': '',
         'lastMessageTime': Timestamp.now(),
         'unreadCount': 0,
+        'isNewMatch': false,
       }, SetOptions(merge: true));
     } catch (e) {
       throw Exception('Failed to create conversation: $e');
+    }
+  }
+
+  Future<void> setNewMatchFlag(String contactId, bool isNewMatch) async {
+    if (currentUserId.isEmpty) return;
+
+    try {
+      await _firestore
+          .collection('users')
+          .doc(currentUserId)
+          .collection('conversations')
+          .doc(contactId)
+          .set({'isNewMatch': isNewMatch}, SetOptions(merge: true));
+    } catch (e) {
+      throw Exception('Failed to update new match flag: $e');
+    }
+  }
+
+  Future<void> setNewMatchForBothUsers({
+    required String userId,
+    required String contactId,
+  }) async {
+    if (currentUserId.isEmpty) return;
+
+    try {
+      final batch = _firestore.batch();
+
+      final userRef = _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('conversations')
+          .doc(contactId);
+      batch.set(userRef, {'isNewMatch': true}, SetOptions(merge: true));
+
+      final contactRef = _firestore
+          .collection('users')
+          .doc(contactId)
+          .collection('conversations')
+          .doc(userId);
+      batch.set(contactRef, {'isNewMatch': true}, SetOptions(merge: true));
+
+      await batch.commit();
+    } catch (e) {
+      throw Exception('Failed to set new match flags: $e');
     }
   }
 
@@ -238,6 +342,17 @@ class FirestoreMessagingService {
     final ids = [userId1, userId2];
     ids.sort();
     return '${ids[0]}_${ids[1]}';
+  }
+
+  String _attachmentLabel(String mediaType) {
+    switch (mediaType) {
+      case 'video':
+        return 'Video';
+      case 'audio':
+        return 'Audio';
+      default:
+        return 'Photo';
+    }
   }
 
   /// Update user online status

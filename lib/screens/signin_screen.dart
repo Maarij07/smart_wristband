@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../utils/colors.dart';
 import '../services/firebase_service.dart';
 import '../services/auth_service.dart';
+import '../services/user_context.dart';
 import 'forgot_password_screen.dart';
 import 'signup_screen.dart';
 import 'home_screen.dart';
@@ -75,6 +77,11 @@ class _SignInScreenState extends State<SignInScreen>
         // Save remember me preference and login status
         await AuthService.saveRememberMe(_rememberMe);
         await AuthService.saveLoginStatus(true);
+
+        await context.read<UserContext>().loadUserData(
+          user.uid,
+          forceRefresh: true,
+        );
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

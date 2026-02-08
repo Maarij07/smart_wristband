@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'dart:async';
 import '../utils/colors.dart';
 import '../services/user_context.dart';
+import '../services/ble_connection_provider.dart';
 import 'home_screen.dart';
 
 class ConnectWristbandScreen extends StatefulWidget {
@@ -279,6 +280,10 @@ class _ConnectWristbandScreenState extends State<ConnectWristbandScreen>
           connectedAt: DateTime.now(),
           isConnected: true,
         ));
+        
+        // Sync BLE provider state with connected device
+        final bleProvider = Provider.of<BleConnectionProvider>(context, listen: false);
+        await bleProvider.initializeConnectionFromDevice(device);
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

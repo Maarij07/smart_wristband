@@ -54,6 +54,8 @@ class ProfileService {
       debugPrint('💾 Saving profile picture URL to Firestore');
       
       await _firestore.collection('users').doc(userId).update({
+        'profilePicture': photoUrl,
+        // Keep legacy field for backward compatibility if it exists in the DB.
         'photoUrl': photoUrl,
         'updatedAt': FieldValue.serverTimestamp(),
       });

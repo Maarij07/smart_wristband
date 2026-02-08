@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../utils/colors.dart';
 import '../services/messaging_provider.dart';
 import 'chat_screen.dart';
@@ -89,11 +90,15 @@ class _MessagesTabState extends State<MessagesTab> {
   Widget _buildChatItem(Map<String, dynamic> conversation) {
     final contactId = conversation['contactId'] as String;
     final contactName = conversation['contactName'] as String;
-    final contactAvatar = conversation['contactAvatar'] as String;
+    final contactAvatar = (conversation['contactAvatar'] as String?) ?? '';
+    final contactProfilePicture =
+        (conversation['contactProfilePicture'] as String?) ?? '';
     final lastMessage = conversation['lastMessage'] as String;
     final lastMessageTime = conversation['lastMessageTime'].toDate() as DateTime;
     final unreadCount = conversation['unreadCount'] as int;
     final isOnline = conversation['isOnline'] as bool;
+    final isNewMatch = conversation['isNewMatch'] == true;
+    final initials = _getInitials(contactName, contactAvatar);
 
     return InkWell(
       onTap: () {
@@ -104,7 +109,8 @@ class _MessagesTabState extends State<MessagesTab> {
             builder: (context) => ChatScreen(
               contactId: contactId,
               contactName: contactName,
-              contactAvatar: contactAvatar,
+              contactAvatar: initials,
+              contactProfilePicture: contactProfilePicture,
             ),
           ),
         );
@@ -126,18 +132,21 @@ class _MessagesTabState extends State<MessagesTab> {
                   width: 50,
                   height: 50,
                   decoration: BoxDecoration(
-                    color: AppColors.black,
                     borderRadius: BorderRadius.circular(25),
                   ),
-                  child: Center(
-                    child: Text(
-                      contactAvatar,
-                      style: TextStyle(
-                        color: AppColors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                  child: ClipOval(
+                    child: contactProfilePicture.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: contactProfilePicture,
+                            width: 50,
+                            height: 50,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) =>
+                                _buildAvatarFallback(initials),
+                            errorWidget: (context, url, error) =>
+                                _buildAvatarFallback(initials),
+                          )
+                        : _buildAvatarFallback(initials),
                   ),
                 ),
                 // Online indicator
@@ -173,12 +182,36 @@ class _MessagesTabState extends State<MessagesTab> {
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      Text(
-                        _formatTime(lastMessageTime),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
+                      Row(
+                        children: [
+                          if (isNewMatch)
+                            Container(
+                              margin: const EdgeInsets.only(right: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.black,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                'New',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          Text(
+                            _formatTime(lastMessageTime),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -198,18 +231,20 @@ class _MessagesTabState extends State<MessagesTab> {
                       ),
                       if (unreadCount > 0)
                         Container(
-                          padding: const EdgeInsets.all(4),
+                          width: 18,
+                          height: 18,
                           margin: const EdgeInsets.only(left: 8),
                           decoration: BoxDecoration(
                             color: AppColors.black,
-                            borderRadius: BorderRadius.circular(10),
+                            shape: BoxShape.circle,
                           ),
+                          alignment: Alignment.center,
                           child: Text(
                             unreadCount.toString(),
                             style: TextStyle(
                               fontSize: 10,
                               color: AppColors.white,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
@@ -237,5 +272,34 @@ class _MessagesTabState extends State<MessagesTab> {
     } else {
       return '${dateTime.month}/${dateTime.day}';
     }
+  }
+
+  String _getInitials(String name, String fallback) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      return fallback.isNotEmpty ? fallback : 'U';
+    }
+
+    final parts = trimmed.split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+
+    return parts[0][0].toUpperCase();
+  }
+
+  Widget _buildAvatarFallback(String initials) {
+    return Container(
+      color: AppColors.black,
+      alignment: Alignment.center,
+      child: Text(
+        initials,
+        style: TextStyle(
+          color: AppColors.white,
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
   }
 }

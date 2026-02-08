@@ -21,7 +21,8 @@ class _SignUpScreenState extends State<SignUpScreen>
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
-  final TextEditingController _relationshipStatusController = TextEditingController();
+  final TextEditingController _ageController = TextEditingController();
+  String _selectedRelationshipStatus = 'Single';
   
   bool _agreeToTerms = false;
   bool _obscurePassword = true;
@@ -66,7 +67,7 @@ class _SignUpScreenState extends State<SignUpScreen>
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
-    _relationshipStatusController.dispose();
+    _ageController.dispose();
     super.dispose();
   }
 
@@ -113,7 +114,8 @@ class _SignUpScreenState extends State<SignUpScreen>
           uid: user.uid,
           email: user.email!,
           name: _nameController.text.trim(),
-          relationshipStatus: _relationshipStatusController.text.trim().isEmpty ? 'Single' : _relationshipStatusController.text.trim(),
+          age: _ageController.text.trim(),
+          relationshipStatus: _selectedRelationshipStatus,
           privacySettings: {
             'profileAccess': 'anyone',
             'locationAccess': 'friends_only',
@@ -131,7 +133,8 @@ class _SignUpScreenState extends State<SignUpScreen>
             phoneNumber: null,
             profilePicture: null,
             bio: null,
-            relationshipStatus: _relationshipStatusController.text.trim().isEmpty ? 'Single' : _relationshipStatusController.text.trim(),
+            age: _ageController.text.trim(),
+            relationshipStatus: _selectedRelationshipStatus,
             socialMediaLinks: null,
             privacySettings: {
               'profileAccess': 'anyone',
@@ -285,12 +288,8 @@ class _SignUpScreenState extends State<SignUpScreen>
                     ),
                     const SizedBox(height: 24),
 
-                    // Relationship Status Field
-                    _buildMinimalTextField(
-                      controller: _relationshipStatusController,
-                      label: 'Relationship Status',
-                      hint: 'Single',
-                    ),
+                    // Age + Relationship Status
+                    _buildAgeAndRelationshipRow(),
                     const SizedBox(height: 24),
 
                     // Terms Agreement
@@ -476,6 +475,115 @@ class _SignUpScreenState extends State<SignUpScreen>
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             suffixIcon: suffixIcon,
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRelationshipDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Relationship Status',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textPrimary,
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _selectedRelationshipStatus,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: AppColors.surface,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AppColors.divider, width: 1),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AppColors.black, width: 2),
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          ),
+          items: const [
+            DropdownMenuItem(value: 'Single', child: Text('Single')),
+            DropdownMenuItem(value: 'Taken', child: Text('Taken')),
+            DropdownMenuItem(value: 'Complicated', child: Text('Complicated')),
+            DropdownMenuItem(value: 'Private', child: Text('Private')),
+          ],
+          onChanged: (value) {
+            if (value == null) {
+              return;
+            }
+            setState(() {
+              _selectedRelationshipStatus = value;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAgeAndRelationshipRow() {
+    return Row(
+      children: [
+        Expanded(
+          flex: 4,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Age',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _ageController,
+                keyboardType: TextInputType.number,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.textPrimary,
+                  height: 1.4,
+                ),
+                decoration: InputDecoration(
+                  hintText: '24',
+                  hintStyle: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.textSecondary,
+                  ),
+                  filled: true,
+                  fillColor: AppColors.surface,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: AppColors.divider, width: 1),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: AppColors.black, width: 2),
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          flex: 6,
+          child: _buildRelationshipDropdown(),
         ),
       ],
     );
