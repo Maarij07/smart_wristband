@@ -13,9 +13,12 @@ class PermissionService {
     
     final bluetoothGranted = bluetoothConnectStatus.isGranted && bluetoothScanStatus.isGranted || bluetoothStatus.isGranted;
     
-    return locationStatus.isGranted && 
+    final contactsStatus = await permission_handler.Permission.contacts.status;
+
+    return locationStatus.isGranted &&
            notificationStatus.isGranted &&
-           bluetoothGranted;
+           bluetoothGranted &&
+           contactsStatus.isGranted;
   }
   
   // Check individual permissions
@@ -27,6 +30,10 @@ class PermissionService {
     return await permission_handler.Permission.notification.status.isGranted;
   }
   
+  static Future<bool> isContactsPermissionGranted() async {
+    return await permission_handler.Permission.contacts.status.isGranted;
+  }
+
   static Future<bool> isBluetoothPermissionGranted() async {
     // Check for both legacy and new Bluetooth permissions
     final bluetoothStatus = await permission_handler.Permission.bluetooth.status;
@@ -58,6 +65,10 @@ class PermissionService {
     final audioResult = await permission_handler.Permission.audio.request();
     results['audio'] = audioResult.isGranted;
     
+    // Request contacts permission (needed for emergency contacts)
+    final contactsResult = await permission_handler.Permission.contacts.request();
+    results['contacts'] = contactsResult.isGranted;
+
     // Request bluetooth permission (needed for wristband connection)
     try {
       // Try new Bluetooth permissions first
@@ -96,6 +107,11 @@ class PermissionService {
     return status.isGranted;
   }
   
+  static Future<bool> requestContactsPermission() async {
+    final status = await permission_handler.Permission.contacts.request();
+    return status.isGranted;
+  }
+
   static Future<bool> requestBluetoothPermission() async {
     try {
       // Try to request both new and legacy Bluetooth permissions

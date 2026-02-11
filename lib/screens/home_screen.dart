@@ -5,6 +5,7 @@ import 'package:location/location.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import 'dart:convert';
 import '../utils/colors.dart';
@@ -19,6 +20,7 @@ import 'user_profile_screen.dart';
 import 'maps_tab.dart';
 import 'messages_tab.dart';
 import 'nudges_tab.dart';
+import 'emergency_contacts_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -72,12 +74,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (userContext.user == null) {
       await userContext.loadUserData(uid, forceRefresh: true);
-    }
-
-    // Sync BLE provider with any already-connected device from UserContext
-    if (userContext.connectedDevice != null && mounted) {
-      final bleProvider = context.read<BleConnectionProvider>();
-      await bleProvider.initializeConnectionFromDevice(userContext.connectedDevice!);
     }
   }
   
@@ -185,18 +181,39 @@ class _HomeTabPage extends StatefulWidget {
 class _HomeTabPageState extends State<_HomeTabPage> {
   // State for Find Me functionality
   bool _isFinding = false;
-  
+
   // Track relationship status selection locally for UI
-  String _selectedRelationshipStatus = 'Private'; 
-  
+  String _selectedRelationshipStatus = 'Private';
+
   // Flag to track if SOS route is currently valid/pushed to avoid double pushes
   bool _isSosRouteActive = false;
-  
+
+  // Emergency contacts count
+  int _emergencyContactsCount = 0;
+
   BleConnectionProvider? _bleProvider;
 
   @override
   void initState() {
     super.initState();
+    _loadEmergencyContactsCount();
+  }
+
+  Future<void> _loadEmergencyContactsCount() async {
+    final uid = firebase_auth.FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      if (doc.exists && mounted) {
+        final data = doc.data();
+        final contacts = data?['emergencyContacts'] as List<dynamic>?;
+        setState(() {
+          _emergencyContactsCount = contacts?.length ?? 0;
+        });
+      }
+    } catch (e) {
+      // Ignore errors loading count
+    }
   }
   
   @override
@@ -409,8 +426,69 @@ class _HomeTabPageState extends State<_HomeTabPage> {
               ),
             ),
             
-            const SizedBox(height: 24),
-            
+            const SizedBox(height: 16),
+
+            // Emergency Contacts Button
+            GestureDetector(
+              onTap: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const EmergencyContactsScreen()),
+                );
+                if (result == true) {
+                  _loadEmergencyContactsCount();
+                }
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.divider, width: 1),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.contact_phone, color: Colors.red, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Emergency Contacts',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            '$_emergencyContactsCount/5',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.textSecondary),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
             // Relationship Status Dropdown
             _buildRelationshipDropdown(bleProvider, userContext),
             

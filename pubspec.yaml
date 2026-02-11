@@ -76,6 +76,7 @@ dependencies:
   ionicons: ^0.2.2
   line_icons: ^2.0.3
   google_fonts: ^6.1.0
+  flutter_contacts: ^1.1.9+2
 
 dependency_overrides:
   record_linux:

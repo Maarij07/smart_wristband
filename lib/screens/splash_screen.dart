@@ -58,7 +58,8 @@ class _SplashScreenState extends State<SplashScreen>
     // Check if all required permissions are already granted
     final locationGranted = await PermissionService.isLocationPermissionGranted();
     final notificationGranted = await PermissionService.isNotificationPermissionGranted();
-    final allPermissionsGranted = locationGranted && notificationGranted;
+    final contactsGranted = await PermissionService.isContactsPermissionGranted();
+    final allPermissionsGranted = locationGranted && notificationGranted && contactsGranted;
               
     // Navigate after a small delay to ensure the UI is ready
     if (mounted) {
