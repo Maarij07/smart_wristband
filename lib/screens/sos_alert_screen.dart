@@ -3,6 +3,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:provider/provider.dart';
 import '../services/user_context.dart';
 import '../services/ble_connection_provider.dart';
+import '../services/sos_messaging_service.dart';
 
 class SosAlertScreen extends StatefulWidget {
   final Future<void> Function()? onSosCleared;
@@ -20,6 +21,7 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
   late AudioPlayer _player;
   final List<TextEditingController> _controllers = List.generate(4, (index) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(4, (index) => FocusNode());
+  final SosMessagingService _sosMessagingService = SosMessagingService();
   String _pin = '';
   bool _isClearing = false;
 
@@ -28,6 +30,45 @@ class _SosAlertScreenState extends State<SosAlertScreen> {
     super.initState();
     _player = AudioPlayer();
     _startAlarm();
+    _sendSosAlertImmediately();
+  }
+
+  Future<void> _sendSosAlertImmediately() async {
+    try {
+      final userContext = Provider.of<UserContext>(context, listen: false);
+      final userName = userContext.user?.name ?? 'User';
+
+      print('📱 Sending SOS alert SMS immediately...');
+      final smsResult = await _sosMessagingService.sendSosAlertToContacts(
+        userName: userName,
+      );
+
+      if (smsResult['success']) {
+        print('✅ SOS alert SMS sent successfully');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(smsResult['message'] ?? 'Emergency contacts notified'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      } else {
+        print('⚠️ Failed to send SMS: ${smsResult['error']}');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('SMS notification failed: ${smsResult['error']}'),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Error sending SOS alert: $e');
+    }
   }
 
   Future<void> _startAlarm() async {

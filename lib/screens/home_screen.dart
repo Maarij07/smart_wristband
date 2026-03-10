@@ -3,18 +3,14 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:location/location.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'dart:async';
-import 'dart:convert';
 import '../utils/colors.dart';
 import '../services/user_context.dart';
 import '../services/location_service.dart';
 import '../services/ble_connection_provider.dart';
+import '../services/sos_messaging_service.dart';
 
-import 'sos_alert_screen.dart';
-import 'signin_screen.dart';
 import 'connect_wristband_screen.dart';
 import 'user_profile_screen.dart';
 import 'maps_tab.dart';
@@ -33,10 +29,8 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   late MapController _mapController; // Persistent map controller
   final LocationService _locationService = LocationService();
-  bool _isMapInitialized = false; // Track map initialization state
-  LocationData? _currentLocation; // Cache current location
-  DateTime? _lastSosClearedTime; // Track when SOS was last cleared for debounce
-  
+  bool _isMapInitialized = false;
+  LocationData? _currentLocation;
   List<Widget> get _pages => [
     const _HomeTabPage(),
     const MessagesTab(),
@@ -128,6 +122,11 @@ class _HomeScreenState extends State<HomeScreen> {
         toolbarHeight: 0, // Make toolbar invisible
       ),
       body: _pages[_selectedIndex],
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _testSosAlert(context),
+        backgroundColor: Colors.red,
+        child: const Icon(Icons.message, color: Colors.white),
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(top: BorderSide(color: AppColors.divider, width: 1)),
@@ -169,6 +168,65 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  Future<void> _testSosAlert(BuildContext context) async {
+    final userContext = Provider.of<UserContext>(context, listen: false);
+    final userName = userContext.user?.name ?? 'User';
+    
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Testing SOS Alert'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Sending SMS to emergency contacts...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      final sosService = SosMessagingService();
+      final result = await sosService.sendSosAlertToContacts(userName: userName);
+
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+
+        if (result['success']) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'SOS alert sent successfully'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: ${result['error']}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 }
 
 class _HomeTabPage extends StatefulWidget {
@@ -185,13 +243,8 @@ class _HomeTabPageState extends State<_HomeTabPage> {
   // Track relationship status selection locally for UI
   String _selectedRelationshipStatus = 'Private';
 
-  // Flag to track if SOS route is currently valid/pushed to avoid double pushes
-  bool _isSosRouteActive = false;
-
   // Emergency contacts count
   int _emergencyContactsCount = 0;
-
-  BleConnectionProvider? _bleProvider;
 
   @override
   void initState() {
@@ -215,62 +268,7 @@ class _HomeTabPageState extends State<_HomeTabPage> {
       // Ignore errors loading count
     }
   }
-  
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Subscribe to BLE provider state changes
-    final provider = Provider.of<BleConnectionProvider>(context, listen: false);
-    if (_bleProvider != provider) {
-      _bleProvider?.removeListener(_onBleStateChanged);
-      _bleProvider = provider;
-      _bleProvider?.addListener(_onBleStateChanged);
-    }
-  }
-  
-  @override
-  void dispose() {
-    _bleProvider?.removeListener(_onBleStateChanged);
-    super.dispose();
-  }
-  
-  void _onBleStateChanged() {
-    if (_bleProvider == null) return;
-    
-    // Check if we need to navigate to SOS screen
-    if (_bleProvider!.isSosScreenActive && !_isSosRouteActive) {
-      _navigateToSosScreen();
-    }
-  }
-  
-  void _navigateToSosScreen() {
-    _isSosRouteActive = true;
-    
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => SosAlertScreen(
-          onSosCleared: () async {
-            // When user clears SOS, tell provider to send 'K' and reset state
-            if (_bleProvider != null) {
-              await _bleProvider!.clearSos();
-            }
-          },
-        ),
-      ),
-    ).then((_) {
-      // Reset local route flag when screen is closed
-      _isSosRouteActive = false;
-      
-      // Safety: ensure provider state is reset if closed via other means (back button)
-      // If clearSos was called, it's already false. If not, we might need to reset it.
-      // But normally SosAlertScreen insists on clearing or we assume handled.
-      // If the user forcibly backs out without clearing, the state remains active in provider 
-      // preventing re-trigger. This is likely desired behavior until properly cleared?
-      // For now, let's assume onSosCleared (which calls clearSos) is the primary exit.
-    });
-  }
-  
+
   @override
   Widget build(BuildContext context) {
     // Access providers

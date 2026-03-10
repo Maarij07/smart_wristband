@@ -15,9 +15,12 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<Contact> _allContacts = [];
   List<Contact> _filteredContacts = [];
-  List<Map<String, String>> _selectedContacts = [];
+  List<Map<String, dynamic>> _selectedContacts = [];
   bool _isLoading = true;
   bool _isSaving = false;
+  
+  // Country code selector
+  String _defaultCountryCode = '+1'; // Default to US/Canada
 
   @override
   void initState() {
@@ -51,18 +54,25 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
         final data = doc.data();
         final contacts = data?['emergencyContacts'] as List<dynamic>?;
         if (contacts != null && mounted) {
+          final convertedContacts = <Map<String, dynamic>>[];
+          for (final c in contacts) {
+            if (c is Map) {
+              convertedContacts.add({
+                'name': c['name']?.toString() ?? '',
+                'phone': c['phone']?.toString() ?? '',
+                'countryCode': c['countryCode']?.toString() ?? '+1',
+                'country': c['country']?.toString() ?? 'US',
+              });
+            }
+          }
           setState(() {
-            _selectedContacts = contacts
-                .map((c) => Map<String, String>.from({
-                      'name': c['name']?.toString() ?? '',
-                      'phone': c['phone']?.toString() ?? '',
-                    }))
-                .toList();
+            _selectedContacts = convertedContacts;
           });
         }
       }
     } catch (e) {
-      // Ignore load errors
+      print('Error loading emergency contacts: $e');
+      // Ignore load errors, continue with empty list
     }
   }
 
@@ -104,14 +114,22 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     return _selectedContacts.any((c) => c['phone'] == phone);
   }
 
+  String _cleanPhoneNumber(String phone) {
+    // Remove all formatting: spaces, dashes, parentheses, dots
+    return phone.replaceAll(RegExp(r'[\s\-\(\)\.]/'), '');
+  }
+
   void _toggleContact(Contact contact) {
-    final phone = contact.phones.isNotEmpty ? contact.phones.first.number : '';
+    var phone = contact.phones.isNotEmpty ? contact.phones.first.number : '';
     if (phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('This contact has no phone number')),
       );
       return;
     }
+
+    // Clean the phone number before saving
+    phone = _cleanPhoneNumber(phone);
 
     setState(() {
       if (_isContactSelected(contact)) {
@@ -126,15 +144,64 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
         _selectedContacts.add({
           'name': contact.displayName,
           'phone': phone,
+          'countryCode': _defaultCountryCode,
+          'country': _getCountryNameFromCode(_defaultCountryCode),
         });
       }
     });
+    
+    // Auto-save after toggling
+    _autoSaveContacts();
+  }
+
+  String _getCountryNameFromCode(String code) {
+    final countryMap = {
+      '+1': 'US',
+      '+44': 'UK',
+      '+92': 'Pakistan',
+      '+91': 'India',
+      '+86': 'China',
+      '+81': 'Japan',
+      '+33': 'France',
+      '+49': 'Germany',
+    };
+    return countryMap[code] ?? 'Unknown';
+  }
+
+  Future<void> _autoSaveContacts() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    try {
+      // Convert to list of maps safe for Firestore
+      final contactsToSave = _selectedContacts.map((contact) => {
+        'name': contact['name'] ?? '',
+        'phone': contact['phone'] ?? '',
+        'countryCode': contact['countryCode'] ?? '+1',
+        'country': contact['country'] ?? 'US',
+      }).toList();
+
+      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+        'emergencyContacts': contactsToSave,
+      });
+      print('✅ Emergency contacts auto-saved');
+    } catch (e) {
+      print('⚠️ Error auto-saving contacts: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving contacts: $e')),
+        );
+      }
+    }
   }
 
   void _removeContact(int index) {
     setState(() {
       _selectedContacts.removeAt(index);
     });
+    
+    // Auto-save after removing
+    _autoSaveContacts();
   }
 
   Future<void> _saveContacts() async {
@@ -143,8 +210,16 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
 
     setState(() => _isSaving = true);
     try {
+      // Convert to list of maps safe for Firestore
+      final contactsToSave = _selectedContacts.map((contact) => {
+        'name': contact['name'] ?? '',
+        'phone': contact['phone'] ?? '',
+        'countryCode': contact['countryCode'] ?? '+1',
+        'country': contact['country'] ?? 'US',
+      }).toList();
+
       await FirebaseFirestore.instance.collection('users').doc(uid).update({
-        'emergencyContacts': _selectedContacts,
+        'emergencyContacts': contactsToSave,
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -191,6 +266,52 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
+                // Country Code Selector
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Default Country Code',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButton<String>(
+                        isExpanded: true,
+                        value: _defaultCountryCode,
+                        underline: Container(
+                          height: 1,
+                          color: AppColors.divider,
+                        ),
+                        items: [
+                          DropdownMenuItem(value: '+1', child: Text('🇺🇸 US/Canada (+1)')),
+                          DropdownMenuItem(value: '+44', child: Text('🇬🇧 United Kingdom (+44)')),
+                          DropdownMenuItem(value: '+92', child: Text('🇵🇰 Pakistan (+92)')),
+                          DropdownMenuItem(value: '+91', child: Text('🇮🇳 India (+91)')),
+                          DropdownMenuItem(value: '+86', child: Text('🇨🇳 China (+86)')),
+                          DropdownMenuItem(value: '+81', child: Text('🇯🇵 Japan (+81)')),
+                          DropdownMenuItem(value: '+33', child: Text('🇫🇷 France (+33)')),
+                          DropdownMenuItem(value: '+49', child: Text('🇩🇪 Germany (+49)')),
+                          DropdownMenuItem(value: '+61', child: Text('🇦🇺 Australia (+61)')),
+                          DropdownMenuItem(value: '+64', child: Text('🇳🇿 New Zealand (+64)')),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() {
+                              _defaultCountryCode = value;
+                            });
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
                 // Selected contacts chips
                 if (_selectedContacts.isNotEmpty)
                   Container(
@@ -213,9 +334,10 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
                           runSpacing: 8,
                           children: List.generate(_selectedContacts.length, (index) {
                             final contact = _selectedContacts[index];
+                            final countryCode = contact['countryCode'] ?? '+1';
                             return Chip(
                               label: Text(
-                                contact['name'] ?? '',
+                                '${contact['name']} ($countryCode)',
                                 style: const TextStyle(fontSize: 13),
                               ),
                               deleteIcon: const Icon(Icons.close, size: 16),

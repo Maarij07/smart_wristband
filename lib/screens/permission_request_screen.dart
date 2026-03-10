@@ -24,14 +24,12 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
   void _checkInitialPermissions() async {
     final locationGranted = await PermissionService.isLocationPermissionGranted();
     final notificationGranted = await PermissionService.isNotificationPermissionGranted();
-    final bluetoothGranted = await PermissionService.isBluetoothPermissionGranted();
     final contactsGranted = await PermissionService.isContactsPermissionGranted();
 
     setState(() {
-      _allPermissionsGranted = locationGranted && notificationGranted && bluetoothGranted && contactsGranted;
+      _allPermissionsGranted = locationGranted && notificationGranted && contactsGranted;
       _permissionResults['location'] = locationGranted;
       _permissionResults['notification'] = notificationGranted;
-      _permissionResults['bluetooth'] = bluetoothGranted;
       _permissionResults['contacts'] = contactsGranted;
     });
     
@@ -62,14 +60,6 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
           _permissionResults['notification'] = notificationResult;
         });
       }
-      
-      // Request bluetooth permission if not granted
-      if (!(_permissionResults['bluetooth'] ?? false)) {
-        final bluetoothResult = await PermissionService.requestBluetoothPermission();
-        setState(() {
-          _permissionResults['bluetooth'] = bluetoothResult;
-        });
-      }
 
       // Request contacts permission if not granted
       if (!(_permissionResults['contacts'] ?? false)) {
@@ -82,7 +72,6 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
       setState(() {
         _allPermissionsGranted = (_permissionResults['location'] ?? false) &&
                                 (_permissionResults['notification'] ?? false) &&
-                                (_permissionResults['bluetooth'] ?? false) &&
                                 (_permissionResults['contacts'] ?? false);
         _isProcessing = false;
       });
@@ -194,14 +183,6 @@ class _PermissionRequestScreenState extends State<PermissionRequestScreen> {
                 'Notifications',
                 'To alert you about important updates and messages',
                 _permissionResults['notification'] ?? false,
-              ),
-              const SizedBox(height: 16),
-
-              _buildPermissionItem(
-                Icons.bluetooth,
-                'Bluetooth',
-                'To connect and communicate with your Status Band',
-                _permissionResults['bluetooth'] ?? false,
               ),
               const SizedBox(height: 16),
 
